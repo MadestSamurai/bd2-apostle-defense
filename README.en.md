@@ -47,6 +47,6 @@ The planner uses short-horizon estimates. **It is not a full battle simulator an
 
 ## Development
 
-Project code is [MIT licensed](LICENSE). See [third-party notices](THIRD_PARTY_> **Disclaimer:** Using this assistant carries risks, including account penalties or bans, game errors, and data loss. This project is not affiliated with the game publisher and does not guarantee safe use. Assess the risks and follow the game's rules; you assume responsibility for all risks and consequences of using the tool.S.md).
+Project code is [MIT licensed](LICENSE). See [third-party notices](THIRD_PARTY_NOTICES.md).
 
 With .NET 8 SDK, run `./build.ps1` in the repository; use `./package.ps1` for both editions. Normal builds and tests do not need a game installation. CI uses generated scenarios and never starts or injects a game. See [development](docs/DEVELOPMENT.md) and [localization](docs/LOCALIZATION.md).

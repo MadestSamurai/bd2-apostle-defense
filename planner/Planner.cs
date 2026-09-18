@@ -1,7 +1,7 @@
 namespace BD2ApostleDefense;
 
 // Short-horizon expected-value planner. Scores are estimates, never claimed as a win probability.
-public sealed class Planner
+public sealed partial class Planner
 {
  private readonly Dictionary<string,double> coverageCache=new();private string geometry="";
  private readonly BossChase bossChase=new();
@@ -158,20 +158,32 @@ public sealed class Planner
   double required=cur.Boss?s.Enemies.Sum(e=>e.Hp)/Math.Max(1,s.SecondsLeft):cur.Hp*cur.Count/Math.Max(1,cur.Duration);
   if(cur.Boss&&required==0)required=cur.Hp*cur.Count/Math.Max(1,cur.Duration);
   bool urgent=s.EnemyCount>=s.Catalog.GameOverCount*.6||currentDps<required*1.2;
-  double weight=s.Catalog.Units.Sum(d=>(double)d.Weight);if(weight<=0)return Act("wait","召唤概率表不可用");
-  var empty=s.Boards.FirstOrDefault(b=>!s.Units.Any(u=>u.Grid==b.Id));
-  double rollValue=empty==null?0:s.Catalog.Units.Sum(d=>d.Weight*Utility(d,empty,s))/weight/s.Catalog.SummonCost;
+  double weight=s.Catalog.Units.Sum(d=>(double)d.Weight);if(weight<=0||s.Catalog.SummonCost<=0)return Act("wait","召唤概率表不可用");
+  var emptyBoards=s.Boards.Where(b=>!s.Units.Any(u=>u.Grid==b.Id)).ToArray();
+  var empty=emptyBoards.FirstOrDefault();
+  bool opening=empty!=null&&!cur.Boss&&!s.Catalog.Waves.Any(w=>w.Boss&&w.Id<=cur.Id);
+  if(opening&&s.Units.Length<Math.Min(3,s.Boards.Length))
+   return s.CanSummon&&s.Gold>=s.Catalog.SummonCost
+    ?Act("summon","开局先补足基础阵容，再考虑属性升级")
+    :Act("wait","开局保留金币，等待召唤下一名使徒");
+  double SpendingValue(UnitDef u,Board b,int extra=0)=>opening?OpeningUtility(u,b,s,extra):Utility(u,b,s,extra);
+  // A summoned unit can be moved on the next decision. Score its best empty
+  // destination, not only the native first-empty spawn slot (which can be inland).
+  double rollValue=empty==null?0:s.Catalog.Units.Sum(d=>d.Weight*emptyBoards.Max(b=>SpendingValue(d,b)))/weight/s.Catalog.SummonCost;
   Decision? bestUpgrade=null;double upgradeValue=0;
   for(int e=0;e<5;e++)if(s.CanUpgrade[e]&&s.Levels[e]<s.Catalog.MaxUpgrade&&s.UpgradeCosts[e]>0&&s.Gold>=s.UpgradeCosts[e])
   {
-   double gain=s.Units.Where(u=>defs[u.Id].Element==e).Sum(u=>Utility(defs[u.Id],boards[u.Grid],s,1)-Utility(defs[u.Id],boards[u.Grid],s));double v=gain/s.UpgradeCosts[e];
+   if(opening&&!OpeningUpgradeAllowed(e,s,defs,boards))continue;
+   double gain=s.Units.Where(u=>defs[u.Id].Element==e).Sum(u=>SpendingValue(defs[u.Id],boards[u.Grid],1)-SpendingValue(defs[u.Id],boards[u.Grid]));double v=gain/s.UpgradeCosts[e];
    if(v>upgradeValue){upgradeValue=v;bestUpgrade=new(){Kind="upgrade",Element=e,Score=v,Reason=$"升级{Names.Element(e)}属性，强化现有{ s.Units.Count(u=>defs[u.Id].Element==e)}名使徒"};}
   }
   if(empty!=null)
   {
    if(bestUpgrade!=null&&upgradeValue>rollValue*(rareMode?2.5:1.15)&&(urgent||!rareMode))return bestUpgrade;
    if(s.CanSummon&&s.Gold>=s.Catalog.SummonCost)return Act("summon",rareMode?"保留核心，利用空位继续召唤":"补充空位，扩大输出与元素覆盖");
-   if(bestUpgrade!=null&&urgent)return bestUpgrade;
+   // Before the first boss, an unaffordable summon does not make every affordable
+   // upgrade worthwhile. Compare its value and income payback before spending.
+   if(bestUpgrade!=null&&urgent&&(!opening||upgradeValue>rollValue*(rareMode?2.5:1.15)))return bestUpgrade;
    return Act("wait","等待击杀收益，保留现有使徒");
   }
   // Sell + reroll is evaluated as a compound action with sufficient purchase money and survival reserve.

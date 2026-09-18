@@ -7,7 +7,7 @@ Requires Windows x64 and .NET 8 SDK. 普通构建不需要安装游戏。
 ./package.ps1 -Locked
 ```
 
-The package script produces `dist/v0.2.0/`: Portable/Lite EXE and ZIP, `SHA256SUMS.txt`, `release.json`. It refuses to overwrite an existing release directory. Build products live in ignored `.build/`, `bin/` and `obj/` folders.
+The package script produces `dist/v0.2.1/`: Portable/Lite EXE and ZIP, `SHA256SUMS.txt`, `release.json`. It refuses to overwrite an existing release directory. Build products live in ignored `.build/`, `bin/` and `obj/` folders.
 
 - `shared/`: snapshot and command protocol, guards and native flow.
 - `planner/`: ordinary-wave assignment and short-horizon boss pursuit.

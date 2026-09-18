@@ -163,7 +163,7 @@ Snapshot SellingScenario(){var x=Base();x.Units=Enumerable.Range(0,9).Select(i=>
 port=new FakePort();controller=new Controller(port);s=SellingScenario();controller.Start(s,new(),now);controller.Poll(s,now);sent=port.Last!;
 Check(sent.Action.Kind=="sell","controller can choose low-value full-board reroll");
 int soldGrid=sent.Action.Grid;s.Units=s.Units.Where(u=>u.Index!=sent.Action.UnitIndex).ToArray();s.Gold+=8;s.CanSummon=true;
-s.Catalog.Units[0].UpAttack=1000000;s.CanUpgrade[0]=true;s.UpgradeCosts[0]=18;
+s.Wave=10;s.Catalog.Units[0].UpAttack=1000000;s.CanUpgrade[0]=true;s.UpgradeCosts[0]=18;
 Check(new Planner().Decide(s,new()).Kind=="upgrade","without refill intent competing upgrade would consume reroll money");
 s.Owner=sent.Owner;s.Ack=sent.Command;s.AckResult="ok";s.At=now+TimeSpan.FromSeconds(1).Ticks;controller.Poll(s,s.At);
 s.Blocker="NetworkErrorPopupUI";s.At+=TimeSpan.FromSeconds(1).Ticks;controller.Poll(s,s.At);Check(port.Last!.Command==0,"refill respects blocking modal");
@@ -216,6 +216,7 @@ var exposed=inspectController.PendingDecision;Check(exposed?.Kind=="summon","ins
 exposed!.Kind="sell";Check(inspectController.PendingDecision?.Kind=="summon"&&inspectPort.Last!.Action.Kind=="summon","inspection cannot mutate dispatched action");
 inspectController.Stop();Check(inspectController.PendingDecision==null,"paused inspector clears pending command");
 var bossChaseRegression=BossChaseTests.Run(Check,s.Catalog,captured,now);
+OpeningEconomyTests.Run(Check,now);
 int localizationChecks=LocalizationTests.Run();
 string output=args.Length>0?args[0]:Path.Combine(AppContext.BaseDirectory,"test-data","results");Directory.CreateDirectory(output);JsonFiles.Write(Path.Combine(output,"tests.json"),new{status="passed",passed,localizationChecks,checks,assignmentCases,scaleBench,bossChaseRegression,meleeRegression=new{fixtureFirst,placementMoves},rerollRegression=new{lateDecision,lateMoves},plannerMeanMs=watch.Elapsed.TotalMilliseconds/200});Console.WriteLine($"PASS {passed} checks; planner mean {watch.Elapsed.TotalMilliseconds/200:0.00} ms; melee placement {placementMoves} steps; late reroll {lateDecision.Kind} after {lateMoves} moves; scaling {JsonSerializer.Serialize(scaleBench)}");
 

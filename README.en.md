@@ -10,7 +10,7 @@ A standalone assistant for BrownDust II's Apostle Random Defense minigame on the
 
 ## Download and start
 
-Current version: **0.2.0**. Both editions have identical features and languages.
+Current version: **0.2.1**. Both editions have identical features and languages.
 
 | Edition | Runtime requirement | Recommended for |
 | --- | --- | --- |
@@ -26,11 +26,14 @@ The EXE runs on its own. ZIP bundles include both READMEs, licenses and maintena
 
 Switch **简体中文 / English** from the top bar. The first launch follows your system language; later launches remember your choice. Switching does not alter the active task, interval or pending command. Names supplied by the game retain their original language.
 
+Upgrading from 0.2.0 to 0.2.1: pause and close the old assistant, restart the game normally, then connect with the new EXE. The decision fix is tool-side, but component identity checks across release builds still require a fresh game session.
+
 ## Board and decisions
 
 - The 68-cell board shows actual positions, elements, tiers, enemies and move arrows. Click a unit to inspect its stats, range and route coverage. Inspection does not control the game; arrow keys navigate and Esc clears selection.
 - English cells use Wa / Fi / Wi / Li / Da for Water / Fire / Wind / Light / Dark, followed by tier. Tooltips and selection details show full names.
 - Ordinary waves compare executable moves and swaps, upgrades, summons and low-risk rerolls. A confirmed sale is followed by a refill before other spending.
+- Before the first boss, build a three-unit starting lineup and save toward summons. After that, upgrades are evaluated against current-wave hits to kill; overkill does not count as extra clearing speed. When saving for the next summon, an upgrade must earn that summon back sooner through extra kills. This is a decision estimate, not a full battle simulation.
 - Boss waves use enemy position, speed and route to predict short-term damage and move attackers to stay in range. The planner handles multiple bosses, deducts displaced allies' losses and preserves attack progress. Static repositioning and selling are suspended during boss waves.
 - Action interval: 100–3000 ms, default 500 ms. Commands wait for game confirmation rather than accumulating. Pursuit also checks the exact live target, wave and snapshot age.
 - Results, Exit, confirmation and return to lobby follow the game's own flow. Achievement progress is read back from the server before continuing. Disabling auto-next still allows the current round to exit normally.

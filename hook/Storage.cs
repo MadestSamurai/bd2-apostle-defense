@@ -1,0 +1,19 @@
+using System;
+using System.IO;
+using System.Runtime.Serialization.Json;
+namespace BD2ApostleDefense.Runtime
+{
+    internal static class Storage
+    {
+        internal static void AppendFlow(FlowEvidence value)
+        {
+            Directory.CreateDirectory(Identity.Root);var path=Path.Combine(Identity.Root,"flow-current.jsonl");
+            if(File.Exists(path)&&new FileInfo(path).Length>4*1024*1024){var previous=Path.Combine(Identity.Root,"flow-previous.jsonl");if(File.Exists(previous))File.Delete(previous);File.Move(path,previous);}
+            using(var f=new FileStream(path,FileMode.Append,FileAccess.Write,FileShare.Read)){new DataContractJsonSerializer(typeof(FlowEvidence)).WriteObject(f,value);f.WriteByte(10);}
+        }
+        internal static T Read<T>(string name) where T:class
+        {try{using(var f=new FileStream(Path.Combine(Identity.Root,name),FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))return (T)new DataContractJsonSerializer(typeof(T)).ReadObject(f);}catch{return null;}}
+        internal static void Write(string name,object value)
+        {Directory.CreateDirectory(Identity.Root);var path=Path.Combine(Identity.Root,name);var temp=path+"."+Guid.NewGuid().ToString("N")+".tmp";try{using(var f=File.Create(temp))new DataContractJsonSerializer(value.GetType()).WriteObject(f,value);if(File.Exists(path))File.Replace(temp,path,null);else File.Move(temp,path);}finally{if(File.Exists(temp))File.Delete(temp);}}
+    }
+}

@@ -253,5 +253,12 @@
   "水属性使徒": "Water unit",
   "火属性使徒": "Fire unit",
   "暗属性使徒": "Dark unit",
-  "演示": "Demo"
+  "演示": "Demo",
+  "等待可关闭的大厅活动弹窗": "Waiting for a dismissible lobby event popup",
+  "关闭返回大厅后的活动弹窗，继续核对成就": "Dismiss the lobby event popup and continue checking achievements",
+  "单次操作未完成，保留自动化并按当前界面恢复：": "An action did not complete; automation remains on and will recover from the current screen: ",
+  "等待短暂冷却后重新决策：": "Waiting briefly before replanning: ",
+  "原生点击暂未选中目标，重新读取盘面后继续": "The native click did not select the target; rereading the board before continuing",
+  "对局或匹配状态已变化，按当前界面继续": "Round or matchmaking state changed; continuing from the current screen",
+  "；自动化保持开启，按实际状态恢复。": "; automation stays on and recovers from the observed state."
 }

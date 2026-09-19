@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
-<!-- Keep the hook host version independent: a desktop-only update must preserve its fingerprint. -->
-<PropertyGroup><Version>0.1.7</Version><TargetFramework>net8.0-windows</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+<!-- Component identity includes embedded sources and build metadata; upgrades require a fresh game process. -->
+<PropertyGroup><Version>0.2.2</Version><TargetFramework>net8.0-windows</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
 <ItemGroup>
 <PackageReference Include="Mono.Cecil" Version="0.11.6" />
 <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />

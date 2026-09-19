@@ -1,14 +1,10 @@
-# BD2 Apostle Defense v0.2.2
+# BD2 Apostle Defense vX.Y.Z
 
 ## 简体中文
 
 ### 更新内容
 
-- 修复匹配退回大厅、结算后活动弹窗，以及换位超时导致自动化关闭的问题。
-- 按当前界面接续：结算回到大厅即可确认退出，随后处理可关闭的活动弹窗、核对成就并按设置续局。
-- 换位先确认选中目标；失败后短暂冷却该单位，继续召唤和其他操作，避免同一失败动作占住整条链路。
-- 短暂点击与回读超时保持自动化开启，恢复会记录原因；账号／进程变化及未分类组件错误仍会停止。
-- 统一中英文 README 与发布说明格式，保留原有设置。
+- 说明用户可以感知的变化。
 
 ### 下载
 
@@ -29,11 +25,7 @@
 
 ### Changes
 
-- Fixes automation stopping after cancelled matching, post-result event popups, or movement timeouts.
-- Resumes from the observed screen: lobby arrival confirms settlement, followed by dismissible event overlays, achievement checks and next rounds according to your settings.
-- Checks the selected unit before moving. Failed movement briefly cools that unit while summons and other actions continue.
-- Recoverable clicks and readback timeouts preserve automation and log recovery reasons. Account/process changes and unclassified component errors still stop it.
-- Standardizes both READMEs and release notes while retaining existing settings.
+- Describe a user-visible change.
 
 ### Downloads
 

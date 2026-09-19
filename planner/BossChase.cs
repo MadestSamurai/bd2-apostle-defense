@@ -49,7 +49,7 @@ public sealed class BossChase
   }
   return result;
  }
- public Decision? Decide(Snapshot s, Settings settings, long now)
+ public Decision? Decide(Snapshot s, Settings settings, long now, Func<int,bool>? canMove=null)
  {
   Sync(s); Status = "";
   var wave = s.Catalog.Waves.FirstOrDefault(w => w.Id == s.Wave);
@@ -124,7 +124,7 @@ public sealed class BossChase
   double Weight(int e) => boss[e] ? 1 : s.EnemyCount >= s.Catalog.GameOverCount*.5 ? .8 : .2;
   double oldValue = Enumerable.Range(0,enemies.Length).Sum(e=>Weight(e)*Math.Min(enemies[e].Hp,total[e]));
   double bestGain = 0; Decision? best = null;
-  bool Cooling(int index) => movedAt.TryGetValue(index,out long time) && now-time < TimeSpan.FromMilliseconds(700).Ticks;
+  bool Cooling(int index) => (canMove!=null&&!canMove(index)) || (movedAt.TryGetValue(index,out long time) && now-time < TimeSpan.FromMilliseconds(700).Ticks);
   for (int i=0;i<s.Units.Length;i++)
   {
    var unit=s.Units[i]; var d=defs[unit.Id]; if(!unit.Ready || d.Attack<=0 || d.Range<=0 || Cooling(unit.Index))continue;

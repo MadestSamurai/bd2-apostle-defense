@@ -16,6 +16,7 @@ public static class ContractGenerator
   Role("PlayerKind","ὠὪὭὥὦὪὩὥὣὧὨ");
   Role("ElementKind","ὥὣὮὨὦὨὬὭὤὨὮ");
   Role("Raw","RawDataManager");
+  Role("EventPopup","EventPopupUI");
   Api("Manager.Instance","MiniGameDefenseManager","ὪὨὦὬὡὬὠὧὥὪὭ");
   Api("Manager.Currency","MiniGameDefenseManager","ὬὠὥὬὨὮὭὮὫὫὡ");
   Api("Manager.View","MiniGameDefenseManager","ὩὫὪὠὧὭὨὠὬὫὥ");
@@ -60,6 +61,8 @@ public static class ContractGenerator
   Api("Achievement.Refresh","ὪὥὮὮὯὯὫὪὩὫὣ","ὡὨὫὥὩὡὬὧὤὨὪ");
   Api("Achievement.Read","ὪὥὮὮὯὯὫὪὩὫὣ","ὧὦὥὮὨὮὭὡὫὧὫ");
   Api("Ui.Popup","UIBase","ὡὡὡὯὬὨὢὧὦὦὫ");
+  Api("Ui.CanClose","UIBase","CanCloseUI");
+  Api("Ui.Back","UIBase","OnClickBackButton");
   Api("Ui.IsHud","ὨὧὠὯὪὦὩὣὤὢὡ","ὩὠὮὥὫὧὢὣὯὯὫ");
   Api("Hud.Click","DefenseHUD","OnClickUI");
   Api("DefenseHUD._goRecallButton","DefenseHUD","_goRecallButton");

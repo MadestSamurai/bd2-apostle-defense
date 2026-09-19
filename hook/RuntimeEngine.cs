@@ -14,6 +14,7 @@ namespace BD2ApostleDefense.Runtime
 {
  internal sealed class RuntimeEngine
  {
+  private sealed class UiNotReadyException:Exception {internal UiNotReadyException(string message):base(message){}}
   private static RuntimeEngine current;
   private readonly Harmony patch=new Harmony("bd2.apostle-defense.inputs");
   private Timer timer; private int ioBusy; private bool stopped;
@@ -73,6 +74,7 @@ namespace BD2ApostleDefense.Runtime
     s.State=pending!=null?"pending":"ready";s.Message=pending!=null?"等待原生操作回读："+pending.Action.Reason:"盘面已同步";
     if(pending==null&&s.Blocker.Length>0){s.State="waiting-popup";s.Message="等待关闭游戏弹窗："+s.Blocker;}
    }
+   catch(UiNotReadyException e){if(pending!=null)Finish(pending,"retry",e.Message);s.State="ready";s.Message=e.Message;}
    catch(Exception e){fault=e.GetBaseException().Message;s.State="error";s.Message=fault;CancelSelection();if(pending!=null)Finish(pending,"error",fault);}
    Publish(s);
   }
@@ -105,6 +107,11 @@ namespace BD2ApostleDefense.Runtime
    }).ToArray();
    var blocker=s.Surfaces.FirstOrDefault(PopupPolicy.IsBlocking);
    s.Blocker=blocker==null?"":blocker.Type;
+   var eventPopup=Surface<EventPopupUI>();s.EventPopupOpen=eventPopup!=null;
+   // Only the native dismissible event overlay over the defense lobby is automated.
+   // Purchases, network errors and live-match menus are never closed by this path.
+   s.CanDismissEvent=s.Stage=="lobby"&&eventPopup!=null&&s.Surfaces.Where(PopupPolicy.IsBlocking).All(v=>v.Type==typeof(EventPopupUI).Name)
+    &&(bool)B.InvokeOn("Ui.CanClose",eventPopup);
    if(s.Stage=="waiting"||s.Stage=="login")return;
    if(catalog==null)catalog=ReadCatalog();s.Catalog=catalog;
    if(manager==null)return;
@@ -151,7 +158,7 @@ namespace BD2ApostleDefense.Runtime
    c.Key=Identity.Hash(string.Join(";",c.Units.Select(x=>x.Id+":"+x.Grade+":"+x.Attack+":"+x.Weight)));return c;
   }
   private void Click(UIBase ui,string fieldName)
-  {if(ui==null||!B.Active(ui))throw new InvalidOperationException("原生界面已变化");var go=B.Get(ui,fieldName) as GameObject;if(!B.Active(go))throw new InvalidOperationException("原生按钮未就绪："+fieldName);ui.OnClickUI(go);}
+  {if(ui==null||!B.Active(ui))throw new UiNotReadyException("原生界面已变化");var go=B.Get(ui,fieldName) as GameObject;if(!B.Active(go))throw new UiNotReadyException("原生按钮未就绪："+fieldName);ui.OnClickUI(go);}
   private void Pointer(int grid,bool down)
   {var board=Items(B.Read("Field.Boards",field)).Cast<Component>().Single(b=>N("Field.Id",b)==grid);var camera=B.Read("Manager.Camera",manager) as Camera;if(camera==null)throw new InvalidOperationException("缺少盘面相机");var p=camera.WorldToScreenPoint(board.transform.position);if(p.z<=0)throw new InvalidOperationException("盘面不在相机视野内");B.InvokeOn("Manager.Pointer",manager,down,p);}
   private void Execute(Snapshot s)
@@ -159,8 +166,12 @@ namespace BD2ApostleDefense.Runtime
    var a=pending.Action;
    switch(a.Kind)
    {
+    case "close-event":
+     if(!s.CanDismissEvent||s.Stage!="lobby"||s.Exiting)throw new UiNotReadyException("等待可关闭的大厅活动弹窗");
+     B.InvokeOn("Ui.Back",Surface<EventPopupUI>());break;
     case "refresh":
-     if(s.Stage!="lobby"||achievementRequest)throw new InvalidOperationException("等待大厅读取成就");
+     if(s.Stage!="lobby")throw new UiNotReadyException("等待大厅读取成就");
+     if(achievementRequest)break; // Reattach to an outstanding read; never duplicate it.
      achievementRequest=true;achievementsKnown=false;string requestedAccount=s.Account;
      B.Invoke("Achievement.Refresh",false,(Action)(()=>{achievementRequest=false;if(account!=requestedAccount)return;var c=B.Invoke("Achievement.Read",clearGroup,1) as AchievementDBInfo;var r=B.Invoke("Achievement.Read",rareGroup,1) as AchievementDBInfo;clearProgress=c==null?0:(int)Math.Max(c.Value,c.MaxClearId>=1001?clearTarget:0);rareProgress=r==null?0:(int)Math.Max(r.Value,r.MaxClearId>=1001?rareTarget:0);achievementsKnown=true;}));break;
     case "start":if(s.Stage!="lobby"||!s.AchievementsKnown)throw new InvalidOperationException("尚未核对成就");Click(Surface<DefenseMainUI>(),"_goQuickStartButton");break;
@@ -174,7 +185,11 @@ namespace BD2ApostleDefense.Runtime
      var button=Items(B.Get(hud,"_elementButtons")).Single(b=>(int)B.Num(b,"_elementType")==a.Element);
      if(!B.Active(B.Get(button,"_goUpgradeEnable") as GameObject))throw new InvalidOperationException("升级按钮不可用");hud.OnClickUI((GameObject)B.Get(button,"_goUpgradeButton"));break;
     case "sell":case "move":
-     Pointer(a.Grid,true);Pointer(a.Kind=="move"?a.TargetGrid:a.Grid,false);actionPhase=1;break;
+     B.InvokeOn("Manager.ClearSelection",manager);Pointer(a.Grid,true);
+     var selected=B.Read("Manager.Selected",manager);
+     if(selected==null||N("Field.Id",selected)!=a.UnitIndex||N("Unit.Table",selected)!=a.UnitId||N("Unit.Grid",selected)!=a.Grid)
+     {Finish(pending,"retry","原生点击暂未选中目标，重新读取盘面后继续");break;}
+     Pointer(a.Kind=="move"?a.TargetGrid:a.Grid,false);actionPhase=1;break;
     default:throw new InvalidOperationException("未知操作："+a.Kind);
    }
   }
@@ -182,7 +197,7 @@ namespace BD2ApostleDefense.Runtime
   {
    var c=control;if(!c.Enabled||c.Owner!=pending.Owner||c.Account!=s.Account||c.Expires<now){Finish(pending,"rejected","控制上下文已变化，按当前界面重新决策");return;}
    var a=pending.Action;bool done=false;
-   if(GameFlow.Superseded(a.Kind,before,s)){Finish(pending,"superseded","对局已结束或房间变化，结束等待局内操作并转入结算");s.State="ready";s.Message=ackMessage;return;}
+   if(GameFlow.Superseded(a.Kind,before,s)){Finish(pending,"superseded","对局或匹配状态已变化，按当前界面继续");s.State="ready";s.Message=ackMessage;return;}
    if(a.Kind=="sell"&&actionPhase==1)
    {
     string reject=Guards.Reject(pending,s,now);if(reject.Length>0){Finish(pending,"rejected",reject);return;}
@@ -201,8 +216,12 @@ namespace BD2ApostleDefense.Runtime
    }
    if(done){Finish(pending,"ok",a.Reason);s.State="ready";s.Message="已回读："+a.Reason;return;}
    s.State="pending";s.Message="等待回读："+a.Reason;
-   int timeout=a.Kind=="settle"||a.Kind=="confirm-exit"?30:15;
-   if(now-pendingAt>TimeSpan.FromSeconds(timeout).Ticks){fault="原生操作"+timeout+"秒未确认："+a.Kind+"，阶段="+s.Stage+"，弹窗="+s.Blocker+"。请查看游戏状态后重新开启。";Finish(pending,"timeout",fault);s.State="error";s.Message=fault;}
+   int timeout=GameFlow.TimeoutSeconds(a.Kind);
+   if(now-pendingAt>TimeSpan.FromSeconds(timeout).Ticks)
+   {
+    string message="原生操作"+timeout+"秒未确认："+a.Kind+"，阶段="+s.Stage+"，弹窗="+s.Blocker+"；自动化保持开启，按实际状态恢复。";
+    Finish(pending,"timeout",message);s.State="ready";s.Message=message;
+   }
   }
  }
 }

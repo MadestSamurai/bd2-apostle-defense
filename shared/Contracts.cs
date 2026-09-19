@@ -8,7 +8,7 @@ namespace BD2ApostleDefense
 {
  public static class Identity
  {
-  public const string Version="0.1.7",Runtime="BD2ApostleDefense.Runtime4";
+  public const string Version="0.2.2",Runtime="BD2ApostleDefense.Runtime5";
   public static string Root {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"BD2ApostleDefense");}}
   public static string Hash(string value){using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(value))).Replace("-","").ToLowerInvariant();}
  }
@@ -35,7 +35,7 @@ namespace BD2ApostleDefense
   [DataMember] public string Runtime=Identity.Runtime,Account="",Name="",Room="",Stage="waiting",State="idle",Message="",Owner="",AckResult="",AckMessage="",Blocker="",BoardKey="";
   [DataMember] public long At,ProcessStart,Sequence,Ack;
   [DataMember] public int ProcessId,Wave,Gold,EnemyCount,RoundRare,ClearProgress,RareProgress,ClearTarget=1,RareTarget=3;
-  [DataMember] public bool Ready,AchievementsKnown,CanSummon,Win,Dead,MyView,RoomEnded,CanStartMatch,Exiting;
+  [DataMember] public bool Ready,AchievementsKnown,CanSummon,Win,Dead,MyView,RoomEnded,CanStartMatch,Exiting,EventPopupOpen,CanDismissEvent;
   [DataMember] public double SecondsLeft;
   [DataMember] public int[] Levels=new int[5],UpgradeCosts=new int[5];
   [DataMember] public bool[] CanUpgrade=new bool[5];
@@ -88,6 +88,7 @@ namespace BD2ApostleDefense
    if(c.Owner.Length!=32||c.Account.Length!=64||c.Account!=s.Account||c.ProcessId!=s.ProcessId||c.ProcessStart!=s.ProcessStart)return "账号或进程已变化";
    if(c.SnapshotAt<now-TimeSpan.FromSeconds(3).Ticks||c.SnapshotAt>now+TimeSpan.FromSeconds(1).Ticks)return "决策盘面过期";
    if(c.Room!=s.Room||c.BoardKey!=s.BoardKey)return "盘面已变化，重新决策";
+   if(c.Action.Kind=="close-event")return s.Stage=="lobby"&&!s.Exiting&&s.CanDismissEvent?"":"等待可关闭的大厅活动弹窗";
    if(s.Blocker.Length>0)return "等待关闭弹窗："+s.Blocker;
    var a=c.Action;
    if(a.Policy=="boss-chase")

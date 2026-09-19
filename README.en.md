@@ -4,31 +4,31 @@
 
 English · [简体中文](README.md)
 
-[Download Windows EXE](https://github.com/MadestSamurai/bd2-apostle-defense/releases/latest) · [Report an issue](https://github.com/MadestSamurai/bd2-apostle-defense/issues)
+[Download latest release](https://github.com/MadestSamurai/bd2-apostle-defense/releases/latest) · [Report an issue](https://github.com/MadestSamurai/bd2-apostle-defense/issues)
 
-A standalone assistant for BrownDust II's Apostle Random Defense minigame on the Windows PC client. It targets two achievements: **clear wave 50** and **summon top-tier units**. It reads the live board and rules, then handles summons, upgrades, movement, rerolls, results and the next round. Chinese and English are built in; Python and other BD2 tools are not required.
+A standalone Apostle Defense assistant for the BrownDust II Windows client. Works toward wave-50 and top-tier-summon achievements with automatic summons, upgrades, repositioning, rerolls and next rounds.
 
-## Download and start
+## Download
 
-Current version: **0.2.1**. Both editions have identical features and languages.
+Current version: **0.2.2**. Both editions have the same features and include Simplified Chinese / English.
 
 | Edition | Runtime requirement | Recommended for |
 | --- | --- | --- |
-| Portable | .NET included | Most users; run the EXE directly |
-| Lite | .NET Desktop Runtime 8 x64 installed | A smaller download on an existing .NET setup |
+| **Portable** | .NET included | Most users; download and run |
+| **Lite** | [.NET Desktop Runtime 8 x64](https://dotnet.microsoft.com/download/dotnet/8.0) | Smaller download if the runtime is installed |
 
-The EXE runs on its own. ZIP bundles include both READMEs, licenses and maintenance documentation. Download one edition; verify it with `SHA256SUMS.txt` if desired.
+Download one edition: the EXE runs on its own; ZIPs include both READMEs and licenses. No Python, development SDK or other BD2 tools are required. Lite needs the **Desktop Runtime**, not just .NET Runtime or ASP.NET Runtime. Verify downloads against `SHA256SUMS.txt`.
 
-1. Before upgrading, pause and close the old assistant, then restart the game normally to unload its component.
-2. Enter the Apostle Defense lobby, open the assistant and click **Connect game**.
-3. Choose goals, check your account and server progress, then click **Start**. By default it pursues wave 50 first, then focuses on top-tier summons.
-4. Pause at any time, or select **Stop after this round**. Pausing the assistant does not pause the game timer.
+## Quick start
 
-Switch **简体中文 / English** from the top bar. The first launch follows your system language; later launches remember your choice. Switching does not alter the active task, interval or pending command. Names supplied by the game retain their original language.
+**Before upgrading:** pause and close the old assistant, restart the game normally, then connect with the new version.
 
-Upgrading from 0.2.0 to 0.2.1: pause and close the old assistant, restart the game normally, then connect with the new EXE. The decision fix is tool-side, but component identity checks across release builds still require a fresh game session.
+1. Enter the Apostle Defense lobby, open the assistant, and click **Connect game**.
+2. Choose goals, check your account and server progress, then click **Start**. By default, it pursues wave 50 before top-tier summons.
+3. The assistant acts on the live board, exits completed rounds, checks achievements, and continues according to your settings.
+4. Pause at any time or choose **Stop after this round**. Pausing the assistant does not pause the game timer.
 
-## Board and decisions
+## Features and settings
 
 - The 68-cell board shows actual positions, elements, tiers, enemies and move arrows. Click a unit to inspect its stats, range and route coverage. Inspection does not control the game; arrow keys navigate and Esc clears selection.
 - English cells use Wa / Fi / Wi / Li / Da for Water / Fire / Wind / Light / Dark, followed by tier. Tooltips and selection details show full names.
@@ -40,16 +40,46 @@ Upgrading from 0.2.0 to 0.2.1: pause and close the old assistant, restart the ga
 
 The planner uses short-horizon estimates. **It is not a full battle simulator and does not guarantee wave 50 or a specific summon.** Boss pursuit has offline regression coverage; actual results also depend on units, frame rate and latency.
 
-## Connection, compatibility and diagnostics
+## Language
 
-- Windows x64 PC client only, one game process at a time. Enter the minigame before connecting. Other game popups may pause actions.
-- The component is generated from the installed client's interfaces at connection time. Recognized renames and reordering are resolved; uncertain matches stop connection. This does not guarantee compatibility with every future update.
-- No game DLLs, credentials, inventories, replays or private captures are included. Rules are read from the local installation.
-- Settings, language and diagnostics live in `%LOCALAPPDATA%\BD2ApostleDefense`; use **Open diagnostics**. Existing private-version settings are retained. Diagnostics may contain account names, board state and local paths; remove personal information before sharing.
-- If the heartbeat does not return, check whether the game exited, is still loading, or has an older component loaded. Restart the game normally before connecting a different tool version.
+Use **语言 / Language** in the top bar to switch between Simplified Chinese and English. The first launch uses Chinese on Chinese systems and English otherwise, then remembers your choice. Switching does not restart automation or change settings. Game-provided names and images keep their game language; raw diagnostics remain unchanged.
 
-## Development
+See [translation maintenance](docs/LOCALIZATION.md).
 
-Project code is [MIT licensed](LICENSE). See [third-party notices](THIRD_PARTY_NOTICES.md).
+## Compatibility and limits
 
-With .NET 8 SDK, run `./build.ps1` in the repository; use `./package.ps1` for both editions. Normal builds and tests do not need a game installation. CI uses generated scenarios and never starts or injects a game. See [development](docs/DEVELOPMENT.md) and [localization](docs/LOCALIZATION.md).
+Supports the official Windows x64 PC client, one game process at a time, with the same privilege level as the game. Mobile and Android emulator clients are not supported. First connection resolves local interfaces and builds the component, which may take a few seconds. Uncertain interface matches stop connection with a diagnostic; adaptation does not guarantee every future update will work without maintenance.
+
+Releases contain no game DLLs, resources, account inventories or private captures. Uses short-horizon estimates and does not guarantee wave 50 or a specific summon; it does not abandon a live round.
+
+## Diagnostics and feedback
+
+Settings, language and diagnostics are under `%LOCALAPPDATA%\BD2ApostleDefense`; click **Open diagnostics**. Existing goals and preferences are retained.
+
+| File | Purpose |
+| --- | --- |
+| `decisions-date.log` | Decisions, readbacks, recovery and stop reasons |
+| `flow-current.jsonl` / `flow-previous.jsonl` | Matching, battle, results and popup transitions |
+| `last-action.json` | Before/after snapshots and the latest action outcome |
+| `compatibility.json` / `runtime.json` | Component compatibility and status |
+
+Brief missing snapshots preserve automation while waiting for a heartbeat. Recoverable clicks and readback timeouts replan after a cooldown; failed movement does not block summoning. Matching can resume from the lobby or failure screen. Lobby arrival confirms settlement, then a normally dismissible event overlay is closed. Unknown popups wait for you; account/process changes and unclassified component errors still stop the assistant.
+
+When reporting an issue, include the version, visible message and relevant log excerpts. Remove account information and personal paths first. Do not upload game DLLs, complete inventories or connection credentials.
+
+## Development and contributions
+
+Requires Windows x64, PowerShell and the .NET 8 SDK. Normal builds and regression tests do not need or connect to the game.
+
+```powershell
+.\build.ps1 -Locked
+.\package.ps1 -Locked
+```
+
+Assets are written to `dist/v<version>/`. Packaging checks both runtime configurations and runs UI checks.
+
+[Development and release workflow](docs/DEVELOPMENT.md) · [Documentation and release format](docs/PUBLICATION_STYLE.md) · [Current release notes](docs/RELEASE_NOTES.md)
+
+## License
+
+Project code is [MIT licensed](LICENSE). Dependencies retain their own licenses; see [third-party notices](THIRD_PARTY_NOTICES.md). This project is not affiliated with the game developer or publisher.

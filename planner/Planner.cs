@@ -90,8 +90,9 @@ public sealed partial class Planner
   return !boss&&unitDps<=armyDps*.01;
  }
  private static Decision Act(string kind,string reason)=>new(){Kind=kind,Reason=reason};
- public Decision Decide(Snapshot s,Settings settings,long? now=null)
+ public Decision Decide(Snapshot s,Settings settings,long? now=null,Func<int,bool>? canMove=null)
  {
+  if(s.Stage=="lobby"&&!s.Exiting&&s.CanDismissEvent)return Act("close-event","关闭返回大厅后的活动弹窗，继续核对成就");
   if(s.Blocker!="")return Act("wait","等待关闭弹窗："+s.Blocker);
   if(s.Exiting)return Act("wait","正在等待游戏提交结算并返回大厅");
   if(s.Stage=="lobby")
@@ -117,7 +118,7 @@ public sealed partial class Planner
   var defs=s.Catalog.Units.ToDictionary(u=>u.Id);var boards=s.Boards.ToDictionary(b=>b.Id);var cur=Current(s);
   if(cur.Boss)
   {
-   var chase=bossChase.Decide(s,settings,now??s.At);Focus="BOSS追击：动态换位与持续输出";
+   var chase=bossChase.Decide(s,settings,now??s.At,canMove);Focus="BOSS追击：动态换位与持续输出";
    if(chase!=null)return chase;
   }
   else
@@ -133,13 +134,13 @@ public sealed partial class Planner
   bool bestFollowsTarget=false;
   for(int i=0;i<s.Units.Length;i++)
   {
-   var u=s.Units[i];int from=columns[u.Grid];
+   var u=s.Units[i];if(canMove!=null&&!canMove(u.Index))continue;int from=columns[u.Grid];
    for(int j=0;j<s.Boards.Length;j++)
    {
     if(j==from)continue;var destination=s.Boards[j];
     double affected=matrix[i,from],ownGain=matrix[i,j]-affected,gain=ownGain;int other=-1;
     if(occupants.TryGetValue(destination.Id,out int occupied))
-    {other=occupied;gain+=matrix[other,from]-matrix[other,j];}
+    {other=occupied;if(canMove!=null&&!canMove(s.Units[other].Index))continue;gain+=matrix[other,from]-matrix[other,j];}
     // The relocated beneficiary must improve meaningfully and the pair must gain overall.
     // A powerful ranged occupant keeping the same coverage must not suppress an idle melee.
     if(!WorthMove(ownGain,affected)||!WorthMove(gain,affected))continue;

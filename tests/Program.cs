@@ -134,7 +134,7 @@ foreach(string ending in new[]{"dead","win","room-end"})
   finalBefore=confirm;exitKind="confirm-exit";
  }
  Check(GameFlow.Receipt(exitKind,finalBefore,returnLobby),ending+" confirms real lobby return");
- returnLobby.Blocker="NetworkErrorPopupUI";Check(!GameFlow.Receipt(exitKind,finalBefore,returnLobby),ending+" real modal blocks completion");returnLobby.Blocker="";
+ returnLobby.Blocker="NetworkErrorPopupUI";Check(GameFlow.Receipt(exitKind,finalBefore,returnLobby)&&planner.Decide(returnLobby,new()).Kind=="wait",ending+" lobby arrival acknowledged while next action waits for modal");returnLobby.Blocker="";
  Check(planner.Decide(returnLobby,new()).Kind=="refresh",ending+" refreshes achievements before rematch");
  returnLobby.AchievementsKnown=true;Check(planner.Decide(returnLobby,new()).Kind=="start",ending+" rematches after server progress");
  Check(planner.Decide(returnLobby,new(){AutoNext=false}).Kind=="wait",ending+" disabled next match stays lobby");
@@ -176,6 +176,9 @@ Check(port.Last!.Action.Kind=="upgrade","refill confirmation resumes ordinary op
 port=new FakePort();controller=new Controller(port);s=SellingScenario();controller.Start(s,new(),now);controller.Poll(s,now);sent=port.Last!;
 s.Owner=sent.Owner;s.Ack=sent.Command;s.AckResult="ok";s.Dead=true;s.Stage="result";s.At=now+TimeSpan.FromSeconds(1).Ticks;controller.Poll(s,s.At);s.At+=TimeSpan.FromSeconds(1).Ticks;controller.Poll(s,s.At);
 Check(port.Last!.Action.Kind=="settle","round end supersedes refill intent");controller.Stop();
+port=new FakePort();controller=new Controller(port);s=SellingScenario();controller.Start(s,new(),now);controller.Poll(s,now);sent=port.Last!;
+s.Owner=sent.Owner;s.Ack=sent.Command;s.AckResult="ok";s.Stage="match-failed";s.Room="";s.At=now+TimeSpan.FromSeconds(1).Ticks;controller.Poll(s,s.At);s.At+=TimeSpan.FromSeconds(1).Ticks;controller.Poll(s,s.At);
+Check(port.Last!.Action.Kind=="retry","match failure supersedes confirmed-sale refill intent");controller.Stop();
 // DataContract (game Mono) and System.Text.Json (desktop) must agree on fields and inherited coordinates.
 s=Base();using(var stream=new MemoryStream()){new DataContractJsonSerializer(typeof(Snapshot)).WriteObject(stream,s);stream.Position=0;var decoded=JsonSerializer.Deserialize<Snapshot>(stream,JsonFiles.Options)!;Check(decoded.Boards.Length==9&&decoded.Boards[0].X==-3,"snapshot serialization parity");}
 using(var stream=new MemoryStream(System.Text.Encoding.UTF8.GetBytes(JsonSerializer.Serialize(Command(s,"summon"),JsonFiles.Options)))){var decoded=(Control)new DataContractJsonSerializer(typeof(Control)).ReadObject(stream)!;Check(decoded.Action.Kind=="summon"&&decoded.Account==s.Account,"control serialization parity");}
@@ -217,6 +220,7 @@ exposed!.Kind="sell";Check(inspectController.PendingDecision?.Kind=="summon"&&in
 inspectController.Stop();Check(inspectController.PendingDecision==null,"paused inspector clears pending command");
 var bossChaseRegression=BossChaseTests.Run(Check,s.Catalog,captured,now);
 OpeningEconomyTests.Run(Check,now);
+RecoveryTests.Run(Check,now);
 int localizationChecks=LocalizationTests.Run();
 string output=args.Length>0?args[0]:Path.Combine(AppContext.BaseDirectory,"test-data","results");Directory.CreateDirectory(output);JsonFiles.Write(Path.Combine(output,"tests.json"),new{status="passed",passed,localizationChecks,checks,assignmentCases,scaleBench,bossChaseRegression,meleeRegression=new{fixtureFirst,placementMoves},rerollRegression=new{lateDecision,lateMoves},plannerMeanMs=watch.Elapsed.TotalMilliseconds/200});Console.WriteLine($"PASS {passed} checks; planner mean {watch.Elapsed.TotalMilliseconds/200:0.00} ms; melee placement {placementMoves} steps; late reroll {lateDecision.Kind} after {lateMoves} moves; scaling {JsonSerializer.Serialize(scaleBench)}");
 

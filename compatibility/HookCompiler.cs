@@ -29,7 +29,7 @@ public static class HookCompiler
         foreach(var file in Directory.EnumerateFiles(managed,"*.dll").OrderBy(x=>x,StringComparer.Ordinal))
         {try{refs.Add(MetadataReference.CreateFromFile(file));}catch(BadImageFormatException){}}
         refs.Add(MetadataReference.CreateFromImage(Resource("BD2ApostleDefense.Harmony.dll")));
-        var compilation=CSharpCompilation.Create("BD2ApostleDefense.Runtime5."+ToolFingerprint.Substring(0,16),sources,refs,new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,optimizationLevel:OptimizationLevel.Release,platform:Platform.X64,deterministic:true));
+        var compilation=CSharpCompilation.Create("BD2ApostleDefense.Runtime6."+ToolFingerprint.Substring(0,16),sources,refs,new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,optimizationLevel:OptimizationLevel.Release,platform:Platform.X64,deterministic:true));
         using var stream=new MemoryStream();
         var emit=compilation.Emit(stream,manifestResources:new[]{new ResourceDescription("BD2ApostleDefense.Harmony.dll",()=>new MemoryStream(Resource("BD2ApostleDefense.Harmony.dll")),true)});
         if(!emit.Success)throw new InvalidOperationException("当前客户端接口无法编译，尚未注入。\n"+string.Join("\n",emit.Diagnostics.Where(d=>d.Severity==DiagnosticSeverity.Error).Take(30)));
@@ -42,6 +42,11 @@ public static class HookCompiler
         var hud=(MethodDefinition)BindingResolver.Api(r,r.Contract.Apis.Single(a=>a.Role=="Hud.Click"));
         foreach(var name in new[]{"SpawnMyUnit","ReleaseMyUnit","UpgradeElement"})
             if(!hud.Body.Instructions.Any(i=>i.Operand is MethodReference m&&m.Name==name))throw new InvalidOperationException("原生操作入口已变化："+name);
+        var selector=(MethodDefinition)BindingResolver.Api(r,r.Contract.Apis.Single(a=>a.Role=="Summon.Select"));
+        var spawn=hud.Body.Instructions.Select(i=>i.Operand).OfType<MethodReference>().First(m=>m.Name=="SpawnMyUnit").Resolve();
+        if(!spawn.Body.Instructions.Any(i=>i.Operand is MethodReference m&&m.Resolve()==selector)||
+           selector.Body.Instructions.Count(i=>i.Operand is MethodReference m&&m.Name=="get_SummonRatio")!=1)
+            throw new InvalidOperationException("Lucky mode: native summon path changed");
         var my=r.Types[r.Contract.Roles["PlayerKind"]].Fields.Single(f=>f.Name=="MyPlayer");
         if(Convert.ToInt32(my.Constant)!=0)throw new InvalidOperationException("己方盘面枚举发生变化");
         var attackState=(FieldDefinition)BindingResolver.Api(r,r.Contract.Apis.Single(a=>a.Role=="Unit.AttackState"));

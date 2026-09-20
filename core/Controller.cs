@@ -15,8 +15,9 @@ public sealed class Controller
  {
   var game=port.Find();if(game==null||!Guards.Fresh(s,game.Id,game.Start,now)||s.Account.Length!=64)throw new InvalidOperationException("请先连接游戏并等待账号和盘面同步");
   if(p.Validate()!="")throw new ArgumentException(p.Validate());
-  planner.ResetTactics();recovery.Reset();settings=JsonFiles.Clone(p);active=new(){Enabled=true,Owner=Guid.NewGuid().ToString("N"),Account=s.Account,ProcessId=game.Id,ProcessStart=game.Start,Expires=now+TimeSpan.FromSeconds(10).Ticks};command=0;nextAction=0;refillPending=false;refillRoom="";port.Write(active);Message="已开启，准备读取游戏状态";
+  planner.ResetTactics();recovery.Reset();settings=JsonFiles.Clone(p);active=new(){Enabled=true,LuckyMode=p.LuckyMode,Owner=Guid.NewGuid().ToString("N"),Account=s.Account,ProcessId=game.Id,ProcessStart=game.Start,Expires=now+TimeSpan.FromSeconds(10).Ticks};command=0;nextAction=0;refillPending=false;refillRoom="";port.Write(active);Message="已开启，准备读取游戏状态";
  }
+ public void SetLuckyMode(bool enabled){lock(sync){settings.LuckyMode=enabled;if(active!=null){active.LuckyMode=enabled;port.Write(active);}}}
  public void Update(Settings p){lock(sync){if(p.Validate()!="")throw new ArgumentException(p.Validate());settings=JsonFiles.Clone(p);}}
  public void Stop(string reason="已暂停；游戏仍会继续运行") {lock(sync){active=null;refillPending=false;port.Write(new Control());Message=reason;Diagnostic?.Invoke(reason);}}
  public void Poll(Snapshot? s,long now){lock(sync)PollLocked(s,now);}
@@ -28,9 +29,11 @@ public sealed class Controller
   if(s==null||!Guards.Fresh(s,game.Id,game.Start,now)){Message="等待组件心跳；暂停发出操作，恢复后继续";return;}
   if(s.Account.Length==64&&s.Account!=active.Account){Stop("账号已切换，请核对目标后重新开启");return;}
   if(s.Account.Length==0){Message="等待账号加载";return;}
+  active.LuckyMode=settings.LuckyMode;
   active.Expires=now+TimeSpan.FromSeconds(10).Ticks;
   recovery.Sync(s);
   if(s.Owner==active.Owner&&s.State=="error"){Stop("组件已暂停："+s.Message);return;}
+  if(s.NetworkHold){port.Write(active);Message=s.NetworkMessage;return;}
   if(active.Command>0)
   {
    if(s.Owner!=active.Owner||s.Ack<active.Command){port.Write(active);Message="等待操作确认："+active.Action.Reason;return;}

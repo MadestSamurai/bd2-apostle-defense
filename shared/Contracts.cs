@@ -8,7 +8,7 @@ namespace BD2ApostleDefense
 {
  public static class Identity
  {
-  public const string Version="0.2.2",Runtime="BD2ApostleDefense.Runtime5";
+  public const string Version="0.3.0",Runtime="BD2ApostleDefense.Runtime6";
   public static string Root {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"BD2ApostleDefense");}}
   public static string Hash(string value){using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(value))).Replace("-","").ToLowerInvariant();}
  }
@@ -36,6 +36,10 @@ namespace BD2ApostleDefense
   [DataMember] public long At,ProcessStart,Sequence,Ack;
   [DataMember] public int ProcessId,Wave,Gold,EnemyCount,RoundRare,ClearProgress,RareProgress,ClearTarget=1,RareTarget=3;
   [DataMember] public bool Ready,AchievementsKnown,CanSummon,Win,Dead,MyView,RoomEnded,CanStartMatch,Exiting,EventPopupOpen,CanDismissEvent;
+  [DataMember] public bool NetworkHold;
+  [DataMember] public string NetworkState="inactive",NetworkMessage="";
+  [DataMember] public long NetworkLastPacketAt;
+  [DataMember] public int NetworkProbeFailures,NetworkAvoidedDisconnects,NetworkNativeDisconnects;
   [DataMember] public double SecondsLeft;
   [DataMember] public int[] Levels=new int[5],UpgradeCosts=new int[5];
   [DataMember] public bool[] CanUpgrade=new bool[5];
@@ -46,6 +50,7 @@ namespace BD2ApostleDefense
  }
  [DataContract] public class Settings
  {
+  [DataMember] public bool LuckyMode;
   [DataMember] public bool Clear50=true,Rare=true,AutoNext=true,StopAfterRound;
   [DataMember] public int IntervalMs=500;
   public string Validate(){return !Clear50&&!Rare?"请至少选择一个目标":IntervalMs<100||IntervalMs>3000?"操作间隔需要在100–3000ms之间":"";}
@@ -58,7 +63,7 @@ namespace BD2ApostleDefense
  }
  [DataContract] public class Control
  {
-  [DataMember] public bool Enabled;
+  [DataMember] public bool Enabled,LuckyMode;
   [DataMember] public string Owner="",Account="",Room="",BoardKey="";
   [DataMember] public long ProcessStart,Expires,Command,SnapshotAt;
   [DataMember] public int ProcessId;
@@ -79,6 +84,14 @@ namespace BD2ApostleDefense
   [DataMember] public string Runtime="",Stage="",State="",Blocker="",Action="",AckResult="",Message="";
   [DataMember] public bool Win,Dead,RoomEnded,Exiting;
  }
+ [DataContract] public class NetworkEvidence
+ {
+  [DataMember] public string Runtime=Identity.Runtime;
+  [DataMember] public int ProcessId=System.Diagnostics.Process.GetCurrentProcess().Id;
+  [DataMember] public long At,LastPacketAt;
+  [DataMember] public string Kind="",Room="",State="";
+  [DataMember] public int ProbeFailures,AvoidedDisconnects,NativeDisconnects;
+ }
  public static class Guards
  {
   public static bool Fresh(Snapshot s,int pid,long start,long now){return s!=null&&s.Runtime==Identity.Runtime&&s.ProcessId==pid&&s.ProcessStart==start&&s.At>=now-TimeSpan.FromSeconds(5).Ticks&&s.At<=now+TimeSpan.FromSeconds(2).Ticks;}
@@ -87,6 +100,7 @@ namespace BD2ApostleDefense
    if(c==null||!c.Enabled||c.Expires<now||c.Expires>now+TimeSpan.FromSeconds(15).Ticks)return "控制租约失效";
    if(c.Owner.Length!=32||c.Account.Length!=64||c.Account!=s.Account||c.ProcessId!=s.ProcessId||c.ProcessStart!=s.ProcessStart)return "账号或进程已变化";
    if(c.SnapshotAt<now-TimeSpan.FromSeconds(3).Ticks||c.SnapshotAt>now+TimeSpan.FromSeconds(1).Ticks)return "决策盘面过期";
+   if(s.NetworkHold)return s.NetworkMessage.Length>0?s.NetworkMessage:"网络恢复中，保留任务并等待服务器与盘面同步";
    if(c.Room!=s.Room||c.BoardKey!=s.BoardKey)return "盘面已变化，重新决策";
    if(c.Action.Kind=="close-event")return s.Stage=="lobby"&&!s.Exiting&&s.CanDismissEvent?"":"等待可关闭的大厅活动弹窗";
    if(s.Blocker.Length>0)return "等待关闭弹窗："+s.Blocker;

@@ -238,7 +238,7 @@
   "组件已暂停：": "Component paused: ",
   "最高级使徒：保留产金核心，增加召唤次数": "Top tier: keep gold earners and summon more",
   "最近操作": "Recent actions",
-  "BD2 使徒防守助手 · 0.2.0": "BD2 Apostle Defense · 0.2.0",
+  "BD2 使徒防守助手 · 0.3.0": "BD2 Apostle Defense · 0.3.0",
   "BOSS追击 · ": "Boss pursuit · ",
   "BOSS追击：": "Boss pursuit: ",
   "BOSS追击：保持当前输出，监测离开射程的时机": "Boss pursuit: holding position; watching range",
@@ -260,5 +260,15 @@
   "等待短暂冷却后重新决策：": "Waiting briefly before replanning: ",
   "原生点击暂未选中目标，重新读取盘面后继续": "The native click did not select the target; rereading the board before continuing",
   "对局或匹配状态已变化，按当前界面继续": "Round or matchmaking state changed; continuing from the current screen",
-  "；自动化保持开启，按实际状态恢复。": "; automation stays on and recovers from the observed state."
+  "；自动化保持开启，按实际状态恢复。": "; automation stays on and recovers from the observed state.",
+  "好运模式": "Lucky mode",
+  "开启好运模式": "Enable Lucky mode",
+  "此功能可能存在风险，请自负风险。是否开启？": "This feature may carry risks. Use it at your own risk. Enable it?",
+  "取消": "Cancel",
+  "确认开启": "Enable",
+  "网络恢复中，保留任务并等待服务器与盘面同步": "Recovering network; keeping the task and waiting for the server and board to sync",
+  "外部探测不稳定，游戏通信仍正常": "External connectivity checks are unstable; game traffic is still healthy",
+  " · 网络恢复中": " · Reconnecting",
+  " · 已保留游戏连接": " · Game connection preserved",
+  " · 网络正常": " · Network healthy"
 }

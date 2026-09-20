@@ -13,6 +13,21 @@ public static class ContractGenerator
    if(matches.Length!=1)throw new InvalidOperationException(role+": ambiguous member "+type+"."+name);
    var member=matches[0];selected.Add(member);types.Add(member.DeclaringType);apis.Add(new(role,member.DeclaringType.FullName,name,arity,MetadataIndex.Signature(member)));
   }
+  Role("NetworkKind","ὦὢὫὯὬὫὦὤὯὡὢ");
+  Api("Net.Defense","ὧὥὢὯὯὣὩὧὡὠὨ","ὡὤὣὩὩὨὢὬὡὯὧ");
+  Api("Net.Mode","BDNetwork.NetworkTCPManager","ὫὢὬὠὪὢὫὡὥὤὭ");
+  Api("Net.Client","BDNetwork.NetworkTCPManager","ὯὮὦὪὫὤὦὦὦὮὠ");
+  Api("Net.Connected","BDNetwork.NetworkTCPManager","IsConnect",1);
+  Api("Net.Lost","BDNetwork.NetworkTCPManager","OnNetworkLost",0);
+  Api("Net.Restored","BDNetwork.NetworkTCPManager","OnNetworkRestored",0);
+  Api("Net.Owner","ὤὦὮὢὣὫὭὦὤὡὦ","ὬὭὭὯὦὣὫὫὨὮὥ");
+  Api("Net.Receive","ὤὦὮὢὣὫὭὦὤὡὦ","ὢὯὩὯὣὫὠὡὦὢὣ",1);
+  Api("Net.Message","ὡὡὯὫὤὢὫὫὭὣὠ","ὯὯὮὢὭὣὫὭὮὧὡ");
+  Api("Net.Monitor","NetworkConnectivityMonitor","ὨὯὣὮὬὠὭὧὥὥὬ");
+  Api("Net.Timeout","NetworkConnectivityMonitor","connectionTimeout");
+  Api("Net.LostCallback","NetworkConnectivityMonitor","OnNetworkLost");
+  Api("Summon.Select","MiniGameDefenseManager","ὩὣὬὭὯὦὢὤὣὦὢ",0);
+  Api("Summon.Total","ὧὡὡὠὦὦὪὮὣὥὢ","ὭὬὡὫὥὮὩὢὧὡὩ");
   Role("PlayerKind","ὠὪὭὥὦὪὩὥὣὧὨ");
   Role("ElementKind","ὥὣὮὨὦὨὬὭὤὨὮ");
   Role("Raw","RawDataManager");

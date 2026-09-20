@@ -37,12 +37,21 @@ public partial class MainWindow:Window
  private Settings ReadSettings()
  {
   if(!int.TryParse(Interval.Text,out int ms))throw new ArgumentException("请输入有效的整数间隔，不会重置你的输入");
-  var p=new Settings{Clear50=ClearGoal.IsChecked==true,Rare=RareGoal.IsChecked==true,AutoNext=AutoNext.IsChecked==true,StopAfterRound=StopRound.IsChecked==true,IntervalMs=ms};
+  var p=new Settings{Clear50=ClearGoal.IsChecked==true,Rare=RareGoal.IsChecked==true,AutoNext=AutoNext.IsChecked==true,StopAfterRound=StopRound.IsChecked==true,LuckyMode=Lucky.IsChecked==true,IntervalMs=ms};
   if(p.Validate()!="")throw new ArgumentException(p.Validate());return p;
  }
  private void SettingsChanged(object? sender,RoutedEventArgs e)
  {
-  if(!initialized)return;try{var p=ReadSettings();controller.Update(p);JsonFiles.Write(System.IO.Path.Combine(root,"settings.json"),p);SettingsError.Text="";}catch(Exception ex){SettingsError.Text=ex.Message;}
+  if(!initialized)return;try{var p=ReadSettings();controller.Update(p);p.LuckyMode=false;JsonFiles.Write(System.IO.Path.Combine(root,"settings.json"),p);SettingsError.Text="";}catch(Exception ex){SettingsError.Text=ex.Message;}
+ }
+ private Func<bool>? luckyConfirmation;
+ private void LuckyChanged(object sender,RoutedEventArgs e)
+ {
+  if(!initialized)return;
+  if(Lucky.IsChecked==true&&!(luckyConfirmation?.Invoke()??new LuckyConfirmation{Owner=this}.ShowDialog()==true))
+  {Lucky.IsChecked=false;return;}
+  try{controller.SetLuckyMode(Lucky.IsChecked==true);SettingsChanged(sender,e);}
+  catch(Exception ex){SettingsError.Text=ex.Message;}
  }
  private async void Connect(object sender,RoutedEventArgs e)
  {
@@ -66,6 +75,7 @@ public partial class MainWindow:Window
     DecisionText.Text=controller.Running?controller.Message:"连接游戏后进入使徒运气防守大厅";BoardView.SetFresh(false);return;
    }
    StatusText.Text=(controller.Running?"自动化已开启 · ":"已连接 · ")+Names.Stage(s!.Stage);
+   if(s.NetworkState!="inactive")StatusText.Text+=s.NetworkHold?" · 网络恢复中":s.NetworkState=="probe-degraded"?" · 已保留游戏连接":" · 网络正常";
    RenderAccount();
    ClearProgress.Text=s.AchievementsKnown?(s.ClearProgress>=s.ClearTarget?"已完成 · 服务器确认":$"{s.ClearProgress} / {s.ClearTarget} 次通关"):"等待服务器核对";
    RareProgress.Text=s.AchievementsKnown?$"{s.RareProgress} / {s.RareTarget} 次 · 服务器确认":"等待服务器核对";
@@ -128,11 +138,18 @@ public partial class MainWindow:Window
    if(!GameFlow.Superseded("match-start",boss,lobby))throw new InvalidOperationException("Packaged cancelled match does not recover");
    var recovery=new RecoveryBackoff();recovery.Sync(boss);recovery.Record(chase,false,boss.At);
    if(recovery.CanMove(chase.UnitIndex,boss.At)||!recovery.Ready(new(){Kind="summon"},boss.At))throw new InvalidOperationException("Packaged failed move blocks summoning");
+   if(Lucky.IsChecked==true)throw new InvalidOperationException("Lucky mode must start off");
+   luckyConfirmation=()=>false;Lucky.IsChecked=true;if(Lucky.IsChecked==true||ReadSettings().LuckyMode)throw new InvalidOperationException("Cancelled lucky confirmation enabled mode");
+   luckyConfirmation=()=>true;Lucky.IsChecked=true;if(!ReadSettings().LuckyMode)throw new InvalidOperationException("Accepted lucky confirmation not applied");
+   if(JsonFiles.Read<Settings>(System.IO.Path.Combine(root,"settings.json"))!.LuckyMode)throw new InvalidOperationException("Lucky consent persisted across launches");
+   Lucky.IsChecked=false;luckyConfirmation=()=>false;Lucky.IsChecked=true;if(ReadSettings().LuckyMode)throw new InvalidOperationException("Reenable bypassed confirmation");luckyConfirmation=null;
+   foreach(var locale in new[]{"zh-CN","en-US"}){LanguageChoice.SelectedIndex=locale=="zh-CN"?0:1;var dialog=new LuckyConfirmation{Owner=this};dialog.Show();dialog.UpdateLayout();if(dialog.ActualHeight<160)throw new InvalidOperationException("Risk dialog missing");var bmp=new RenderTargetBitmap((int)Math.Ceiling(dialog.ActualWidth),(int)Math.Ceiling(dialog.ActualHeight),96,96,PixelFormats.Pbgra32);bmp.Render(dialog);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bmp));using(var stream=File.Create(System.IO.Path.Combine(root,"lucky-"+locale+".png")))png.Save(stream);dialog.Close();}
+   LanguageChoice.SelectedIndex=0;await Dispatcher.InvokeAsync(()=>{},DispatcherPriority.ApplicationIdle);
    await BoardSmoke();await LanguageSmoke();
    FocusText.Text="50波通关：输出、覆盖与首领准备";DecisionText.Text="准备水属性升级，强化现有2名使徒；等待游戏确认后继续。";Log("演示盘面，不连接或操作游戏");
    await Dispatcher.InvokeAsync(()=>{},DispatcherPriority.ApplicationIdle);UpdateLayout();Directory.CreateDirectory(root);
    Capture("ui.png");
-   JsonFiles.Write(System.IO.Path.Combine(root,"smoke.json"),new{status="passed",version=AppVersion.Current,checks=new[]{"board","goals","invalid-input-preserved","start-pause","snapshot-render","36-slot-packaged-planner","opening-summon-savings","opening-second-unit","melee-rescue-with-strong-teammate","melee-swap-with-strong-occupant","zero-output-reroll","68-slot-default-minimum-wide-layout","nonoverlap-in-bounds","selection-range-and-fallback-name","selection-follows-unit-not-replacement","enemy-layer-live-update","pending-move-and-stale-state","keyboard-navigation","spectator-and-empty-board","boss-chase-native-command","boss-chase-freshness-guard","english-static-and-dynamic","language-running-state-preserved","language-settings-preserved","english-minimum-layout","english-tile-width","source-names-preserved","settlement-popup-recovery","cancelled-match-recovery","move-recovery-keeps-summon","language-roundtrip","language-listener-cleanup"}});Application.Current.Shutdown();
+   JsonFiles.Write(System.IO.Path.Combine(root,"smoke.json"),new{status="passed",version=AppVersion.Current,checks=new[]{"lucky-default-off","lucky-cancel","lucky-confirm","lucky-session-only","lucky-reconfirm","bilingual-risk-dialog","board","goals","invalid-input-preserved","start-pause","snapshot-render","36-slot-packaged-planner","opening-summon-savings","opening-second-unit","melee-rescue-with-strong-teammate","melee-swap-with-strong-occupant","zero-output-reroll","68-slot-default-minimum-wide-layout","nonoverlap-in-bounds","selection-range-and-fallback-name","selection-follows-unit-not-replacement","enemy-layer-live-update","pending-move-and-stale-state","keyboard-navigation","spectator-and-empty-board","boss-chase-native-command","boss-chase-freshness-guard","english-static-and-dynamic","language-running-state-preserved","language-settings-preserved","english-minimum-layout","english-tile-width","source-names-preserved","settlement-popup-recovery","cancelled-match-recovery","move-recovery-keeps-summon","language-roundtrip","language-listener-cleanup"}});Application.Current.Shutdown();
   }catch(Exception e){JsonFiles.Write(System.IO.Path.Combine(root,"smoke.json"),new{status="failed",error=e.ToString()});Application.Current.Shutdown(1);}
  }
 }

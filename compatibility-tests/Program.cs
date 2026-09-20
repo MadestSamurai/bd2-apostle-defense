@@ -54,5 +54,7 @@ foreach(var scenario in new[]{("broken",true,false),("ambiguous",false,true)})
 Check(!typeof(HookCompiler).Assembly.GetReferencedAssemblies().Any(a=>a.Name=="Assembly-CSharp" || (a.Name??"").StartsWith("UnityEngine")),"public executable has no linked game libraries");
 var embedded=JsonSerializer.Deserialize<BindingContract>(HookCompiler.Resource("BD2ApostleDefense.Contract.json"))!;
 Check(new[]{"Unit.AttackState","Unit.AttackElapsed","Unit.Target","Enemy.NextPoint","Manager.Units","Manager.Enemies"}.All(role=>embedded.Apis.Any(a=>a.Role==role)),"public package embeds all boss-pursuit inputs");
+Check(new[]{"Net.Receive","Net.Owner","Net.Client","Net.Defense","Summon.Select","Summon.Total"}.All(role=>embedded.Apis.Any(a=>a.Role==role)),"network and lucky APIs participate in cross-version contract");
+Check(HookCompiler.Resource("Hook.NetworkGuard.cs").Length>1000&&HookCompiler.Resource("Hook.LuckySummon.cs").Length>1000,"public package embeds network and lucky adapters");
 Check(HookCompiler.Resource("Hook.RuntimeEngine.cs").Length>1000,"public package embeds owned runtime source");
 Console.WriteLine(JsonSerializer.Serialize(new{status="pass",assertions=checks,gameRequired=false,injection=false}));

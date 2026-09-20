@@ -5,6 +5,12 @@ namespace BD2ApostleDefense.Runtime
 {
     internal static class Storage
     {
+        internal static void AppendNetwork(NetworkEvidence value)
+        {
+            Directory.CreateDirectory(Identity.Root);var path=Path.Combine(Identity.Root,"network-current.jsonl");
+            if(File.Exists(path)&&new FileInfo(path).Length>2*1024*1024){var previous=Path.Combine(Identity.Root,"network-previous.jsonl");if(File.Exists(previous))File.Delete(previous);File.Move(path,previous);}
+            using(var f=new FileStream(path,FileMode.Append,FileAccess.Write,FileShare.Read)){new DataContractJsonSerializer(typeof(NetworkEvidence)).WriteObject(f,value);f.WriteByte(10);}
+        }
         internal static void AppendFlow(FlowEvidence value)
         {
             Directory.CreateDirectory(Identity.Root);var path=Path.Combine(Identity.Root,"flow-current.jsonl");

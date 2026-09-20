@@ -159,6 +159,8 @@ public sealed partial class Planner
   double required=cur.Boss?s.Enemies.Sum(e=>e.Hp)/Math.Max(1,s.SecondsLeft):cur.Hp*cur.Count/Math.Max(1,cur.Duration);
   if(cur.Boss&&required==0)required=cur.Hp*cur.Count/Math.Max(1,cur.Duration);
   bool urgent=s.EnemyCount>=s.Catalog.GameOverCount*.6||currentDps<required*1.2;
+  var adjusted=settings.LuckyMode?LuckyWeights.Create(s.Catalog.Units):null;
+  var odds=s.Catalog.Units.Select((d,i)=>new{d.Id,Weight=adjusted==null?d.Weight:adjusted[i]}).ToDictionary(x=>x.Id,x=>x.Weight);
   double weight=s.Catalog.Units.Sum(d=>(double)d.Weight);if(weight<=0||s.Catalog.SummonCost<=0)return Act("wait","召唤概率表不可用");
   var emptyBoards=s.Boards.Where(b=>!s.Units.Any(u=>u.Grid==b.Id)).ToArray();
   var empty=emptyBoards.FirstOrDefault();
@@ -170,7 +172,7 @@ public sealed partial class Planner
   double SpendingValue(UnitDef u,Board b,int extra=0)=>opening?OpeningUtility(u,b,s,extra):Utility(u,b,s,extra);
   // A summoned unit can be moved on the next decision. Score its best empty
   // destination, not only the native first-empty spawn slot (which can be inland).
-  double rollValue=empty==null?0:s.Catalog.Units.Sum(d=>d.Weight*emptyBoards.Max(b=>SpendingValue(d,b)))/weight/s.Catalog.SummonCost;
+  double rollValue=empty==null?0:s.Catalog.Units.Sum(d=>odds[d.Id]*emptyBoards.Max(b=>SpendingValue(d,b)))/weight/s.Catalog.SummonCost;
   Decision? bestUpgrade=null;double upgradeValue=0;
   for(int e=0;e<5;e++)if(s.CanUpgrade[e]&&s.Levels[e]<s.Catalog.MaxUpgrade&&s.UpgradeCosts[e]>0&&s.Gold>=s.UpgradeCosts[e])
   {
@@ -195,7 +197,7 @@ public sealed partial class Planner
    double contribution=Power(d,boards[u.Grid],s.Levels[d.Element],cur,s);
    if(s.Gold+d.Sell<s.Catalog.SummonCost||!CanReroll(contribution,currentDps,required,s.EnemyCount,s.Catalog.GameOverCount,cur.Boss,s.SecondsLeft))continue;
    double netCost=Math.Max(1,s.Catalog.SummonCost-d.Sell);
-   double expectation=s.Catalog.Units.Sum(x=>x.Weight*Utility(x,boards[u.Grid],s))/weight;
+   double expectation=s.Catalog.Units.Sum(x=>odds[x.Id]*Utility(x,boards[u.Grid],s))/weight;
    // Rare mode gives an explicit throughput bonus only to a low-contribution roll slot.
    double bonus=rareMode&&value<=total*.14?Math.Max(1,total*.10):0;
    double roi=(expectation-value+bonus)/netCost;

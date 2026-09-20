@@ -31,15 +31,15 @@ namespace BD2ApostleDefense.Runtime
   internal void Start()
   {
    if(timer!=null)return; B.ValidateCompiledClient();B.Validate();current=this;
-   try{var pump=typeof(GameCameraManager).GetMethod("LateUpdate",BindingFlags.NonPublic|BindingFlags.Instance);if(pump==null)throw new MissingMethodException("GameCameraManager.LateUpdate");patch.Patch(pump,postfix:new HarmonyMethod(typeof(RuntimeEngine),nameof(Frame)));timer=new Timer(_=>IO(),null,0,100);Loader.Status("active","");}catch{Stop();throw;}
+   try{NetworkGuard.Install();LuckySummon.Install();var pump=typeof(GameCameraManager).GetMethod("LateUpdate",BindingFlags.NonPublic|BindingFlags.Instance);if(pump==null)throw new MissingMethodException("GameCameraManager.LateUpdate");patch.Patch(pump,postfix:new HarmonyMethod(typeof(RuntimeEngine),nameof(Frame)));timer=new Timer(_=>IO(),null,0,100);Loader.Status("active","");}catch{Stop();throw;}
   }
   internal void StartProbe(){B.ValidateCompiledClient();Storage.Write("probe.json",new Snapshot{State="compatible",Message=B.Validate()+" interfaces",At=DateTime.UtcNow.Ticks});}
-  internal void Stop(){stopped=true;timer?.Dispose();timer=null;patch.Unpatch(typeof(GameCameraManager).GetMethod("LateUpdate",BindingFlags.NonPublic|BindingFlags.Instance),HarmonyPatchType.All,patch.Id);current=null;}
+  internal void Stop(){stopped=true;LuckySummon.Remove();NetworkGuard.Remove();timer?.Dispose();timer=null;patch.Unpatch(typeof(GameCameraManager).GetMethod("LateUpdate",BindingFlags.NonPublic|BindingFlags.Instance),HarmonyPatchType.All,patch.Id);current=null;}
   private static void Frame(){current?.Tick();}
   private void IO()
   {
    if(Interlocked.Exchange(ref ioBusy,1)!=0)return;
-   try{if(stopped)return;var c=Storage.Read<Control>("control.json");if(c!=null)control=c;Storage.Write("snapshot.json",latest);var e=evidence;if(e!=null&&e!=savedEvidence){Storage.Write("last-action.json",e);savedEvidence=e;}FlowEvidence entry;while(flow.TryPeek(out entry)){Storage.AppendFlow(entry);flow.TryDequeue(out entry);}Loader.Status("active","");}catch{}finally{Interlocked.Exchange(ref ioBusy,0);}
+   try{if(stopped)return;var c=Storage.Read<Control>("control.json");if(c!=null)control=c;Storage.Write("snapshot.json",latest);var e=evidence;if(e!=null&&e!=savedEvidence){Storage.Write("last-action.json",e);savedEvidence=e;}FlowEvidence entry;while(flow.TryPeek(out entry)){Storage.AppendFlow(entry);flow.TryDequeue(out entry);}try{NetworkGuard.Flush();}catch{}Loader.Status("active","");}catch{}finally{Interlocked.Exchange(ref ioBusy,0);}
   }
   private static int N(string role,object o)=>Convert.ToInt32(B.Read(role,o)??0);
   private static bool Flag(string role,object o)=>B.Read(role,o) is bool value&&value;
@@ -49,12 +49,12 @@ namespace BD2ApostleDefense.Runtime
   private T Surface<T>() where T:UIBase=>surfaces.OfType<T>().FirstOrDefault(B.Active);
   private void Tick()
   {
-   long now=DateTime.UtcNow.Ticks;if(stopped||now-lastTick<TimeSpan.FromMilliseconds(100).Ticks)return;lastTick=now;
+   long now=DateTime.UtcNow.Ticks;if(stopped||now-lastTick<TimeSpan.FromMilliseconds(100).Ticks)return;long elapsed=lastTick==0?0:now-lastTick;lastTick=now;
    var s=new Snapshot{ProcessId=pid,ProcessStart=processStart,At=now,Sequence=++seq};
    try
    {
     if(now-lastScan>TimeSpan.FromMilliseconds(400).Ticks){surfaces=UnityEngine.Object.FindObjectsOfType<UIBase>().Where(B.Active).ToArray();lastScan=now;}
-    Read(s);observed=s;
+    NetworkGuard.Pump();Read(s);NetworkGuard.Apply(s);observed=s;
     if(s.Account!=account){account=s.Account;achievementsKnown=false;achievementRequest=false;clearProgress=rareProgress=0;catalog=null;fault="";}
     // A complete native result must be settled before refreshing the server-backed counters.
     if(s.Stage=="lobby"&&lastStage!="lobby")achievementsKnown=false;
@@ -64,6 +64,7 @@ namespace BD2ApostleDefense.Runtime
     if(c.Owner!=owner){CancelSelection();pending=null;owner=c.Owner;handled=ack=0;fault="";ackMessage=ackResult="";}
     s.Owner=owner;
     if(fault.Length>0){s.State="error";s.Message=fault;Publish(s);return;}
+    if(s.NetworkHold){if(pending!=null)pendingAt+=elapsed;s.State="network-wait";s.Message=s.NetworkMessage;Publish(s);return;}
     if(pending!=null){Continue(s,now);Publish(s);return;}
     if(c.Command>handled&&c.Action.Kind!="wait")
     {
@@ -121,6 +122,7 @@ namespace BD2ApostleDefense.Runtime
    if(hud!=null&&GameFlow.RoundFinished(s)&&(s.Stage=="waiting-round"||s.Stage=="playing"))s.Stage="ended";
    if(s.Exiting&&s.Stage!="lobby")s.Stage="settling";
    var network=B.Read("Services.Network",null);if(network!=null){s.Room=Convert.ToString(B.Read("Network.Room",network));s.RoundRare=N("Network.Rare",network);}
+   NetworkGuard.Apply(s);if(s.NetworkHold)return;
    // Native death clears my objects and can switch to another player's view. Settlement must not
    // depend on that board, its camera, upgrade controls, or enemies still being available.
    if(hud==null||field==null||s.Stage!="playing"||GameFlow.RoundFinished(s)||s.Exiting)return;
@@ -180,7 +182,7 @@ namespace BD2ApostleDefense.Runtime
     case "open-result":if(s.Stage!="ended"||!GameFlow.CanSettle(s))throw new InvalidOperationException("对局尚未结束");Click(hud,"_goExitButton");break;
     case "settle":if(s.Stage!="result"||!GameFlow.CanSettle(s))throw new InvalidOperationException("请先完成当前对局");Click(Surface<DefenseResultPopupUI>(),"_goExitButton");break;
     case "confirm-exit":if(s.Stage!="confirm-exit"||!GameFlow.CanSettle(s))throw new InvalidOperationException("不自动放弃进行中的对局");Click(Surface<DefenseGiveUpConfirmPopupUI>(),"_goOkButton");break;
-    case "summon":Click(hud,"_goRecallButton");break;
+    case "summon":LuckySummon.Run(pending.LuckyMode,()=>Click(hud,"_goRecallButton"));break;
     case "upgrade":
      var button=Items(B.Get(hud,"_elementButtons")).Single(b=>(int)B.Num(b,"_elementType")==a.Element);
      if(!B.Active(B.Get(button,"_goUpgradeEnable") as GameObject))throw new InvalidOperationException("升级按钮不可用");hud.OnClickUI((GameObject)B.Get(button,"_goUpgradeButton"));break;

@@ -23,7 +23,7 @@ foreach($flavor in @('Portable','Lite')){
     function RunCheck([string[]]$Arguments){
         $process=Start-Process -FilePath $exe -ArgumentList $Arguments -WorkingDirectory (Get-Location).Path -WindowStyle Hidden -PassThru
         if(-not $process.WaitForExit(30000)){Stop-Process -Id $process.Id -ErrorAction SilentlyContinue;throw "Packaged EXE check timed out: $flavor"}
-        if($process.ExitCode -ne 0){throw "Packaged EXE check failed: $flavor"}
+        if($process.ExitCode -ne 0){Get-ChildItem -LiteralPath $check -Filter smoke.json -Recurse | ForEach-Object {Get-Content -LiteralPath $_.FullName -Raw -Encoding UTF8};throw "Packaged EXE check failed: $flavor"}
     }
     $identityPath=Join-Path $check 'identity.json'
     RunCheck @('--identity',('"'+$identityPath+'"'))

@@ -1,4 +1,4 @@
-<Window x:Class="BD2ApostleDefense.Desktop.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:BD2ApostleDefense.Desktop" Title="BD2 使徒防守助手 · 0.3.0" Width="1220" Height="900" MinWidth="1000" MinHeight="760" Background="{StaticResource AppBackground}" WindowStartupLocation="CenterScreen">
+<Window x:Class="BD2ApostleDefense.Desktop.MainWindow" xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation" xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml" xmlns:local="clr-namespace:BD2ApostleDefense.Desktop" Title="BD2 使徒防守助手 · 0.3.1" Width="1220" Height="900" MinWidth="1000" MinHeight="760" Background="{StaticResource AppBackground}" WindowStartupLocation="CenterScreen">
  <Grid Margin="18">
   <Grid.RowDefinitions><RowDefinition Height="Auto"/><RowDefinition Height="*"/></Grid.RowDefinitions>
   <Grid Margin="0,0,0,16">

@@ -17,7 +17,7 @@ public partial class MainWindow:Window
  private readonly ObservableCollection<string> logs=new();private readonly object logLock=new();private Snapshot? snapshot;private bool busy,initialized;
  public MainWindow(IClientPort port,string root,bool smoke=false)
  {
-  this.port=port;this.root=root;this.smoke=smoke;controller=new(port);InitializeComponent();language=new WindowLanguage(this,LanguagePreference.Read(root));Ui.Catalog=language.Catalog;LanguageChoice.SelectedIndex=language.Catalog.Language=="zh-CN"?0:1;LogList.ItemsSource=logs;
+  this.port=port;this.root=root;this.smoke=smoke;controller=new(port);InitializeComponent();BD2.Distribution.DistributionNotice.Attach(this,LanguageChoice);language=new WindowLanguage(this,LanguagePreference.Read(root));Ui.Catalog=language.Catalog;LanguageChoice.SelectedIndex=language.Catalog.Language=="zh-CN"?0:1;LogList.ItemsSource=logs;
   var p=JsonFiles.Read<Settings>(System.IO.Path.Combine(root,"settings.json"))??new();ClearGoal.IsChecked=p.Clear50;RareGoal.IsChecked=p.Rare;AutoNext.IsChecked=p.AutoNext;StopRound.IsChecked=p.StopAfterRound;Interval.Text=p.IntervalMs.ToString();
   controller.Diagnostic+=Log;initialized=true;timer.Tick+=async(_,_)=>await Refresh();Loaded+=async(_,_)=>{await Refresh();timer.Start();if(smoke)await Smoke();};
   Closing+=(_,_)=>{language.Dispose();timer.Stop();try{controller.Stop();}catch{}};

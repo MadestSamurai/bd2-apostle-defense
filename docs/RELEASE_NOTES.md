@@ -1,9 +1,10 @@
-# BD2 Apostle Defense v0.3.1
+# BD2 Apostle Defense v0.3.2
 
 ## 简体中文
 
 ### 更新内容
 
+- 压缩小窗口的外围留白，保留 68 格棋盘的可读尺寸，兼顾不同 Windows 字体与缩放环境。
 - 主窗口增加免费开源署名：GitHub MadestSamurai／B站 MadSamurai。
 - 新增「来源与说明」，可查看并复制官方仓库与下载链接；随界面切换中英文。
 - 统一双语 README、来源与风险说明，ZIP 附带完整说明；MIT 许可证保持不变。
@@ -27,6 +28,7 @@
 
 ### Changes
 
+- Tightens surrounding spacing to preserve readable 68-cell boards in small windows across Windows font and scaling environments.
 - Adds free-release attribution to the main window: GitHub MadestSamurai / Bilibili MadSamurai.
 - Adds About & source with selectable official repository and download links, following the selected UI language.
 - Standardizes bilingual READMEs and source/risk notices, also included in ZIPs. The MIT License is unchanged.

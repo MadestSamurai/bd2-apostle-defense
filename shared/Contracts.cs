@@ -8,7 +8,7 @@ namespace BD2ApostleDefense
 {
  public static class Identity
  {
-  public const string Version="0.3.1",Runtime="BD2ApostleDefense.Runtime6";
+  public const string Version="0.3.2",Runtime="BD2ApostleDefense.Runtime6";
   public static string Root {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"BD2ApostleDefense");}}
   public static string Hash(string value){using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(value))).Replace("-","").ToLowerInvariant();}
  }

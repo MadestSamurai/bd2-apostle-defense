@@ -33,6 +33,7 @@ jobs:
         if: failure()
         with:
           name: desktop-package-diagnostics
+          include-hidden-files: true
           path: |
             .build/**/smoke.json
             .build/**/*.png

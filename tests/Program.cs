@@ -222,6 +222,8 @@ var bossChaseRegression=BossChaseTests.Run(Check,s.Catalog,captured,now);
 OpeningEconomyTests.Run(Check,now);
 RecoveryTests.Run(Check,now);
 NetworkRecoveryTests.Run(Check,now);
+SettlementRecoveryTests.Run(Check,now);
+AtomicFilesTests.Run(Check);
 LuckyWeightsTests.Run(Check);
 int localizationChecks=LocalizationTests.Run();
 string output=args.Length>0?args[0]:Path.Combine(AppContext.BaseDirectory,"test-data","results");Directory.CreateDirectory(output);JsonFiles.Write(Path.Combine(output,"tests.json"),new{status="passed",passed,localizationChecks,checks,assignmentCases,scaleBench,bossChaseRegression,meleeRegression=new{fixtureFirst,placementMoves},rerollRegression=new{lateDecision,lateMoves},plannerMeanMs=watch.Elapsed.TotalMilliseconds/200});Console.WriteLine($"PASS {passed} checks; planner mean {watch.Elapsed.TotalMilliseconds/200:0.00} ms; melee placement {placementMoves} steps; late reroll {lateDecision.Kind} after {lateMoves} moves; scaling {JsonSerializer.Serialize(scaleBench)}");

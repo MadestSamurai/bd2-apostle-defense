@@ -1,7 +1,7 @@
 namespace BD2ApostleDefense;
 public sealed class Controller
 {
- private readonly object sync=new();private readonly IClientPort port;private readonly Planner planner=new();private Control? active;private Settings settings=new();private long command,nextAction;
+ private readonly object sync=new();private readonly IClientPort port;private readonly Planner planner=new();private Control? active;private Settings settings=new();private long command,nextAction,watchAt,lastPoll;
  private bool refillPending;private string refillRoom="";
  private readonly RecoveryBackoff recovery=new();
  public bool Running {get{lock(sync)return active!=null;}}
@@ -15,7 +15,7 @@ public sealed class Controller
  {
   var game=port.Find();if(game==null||!Guards.Fresh(s,game.Id,game.Start,now)||s.Account.Length!=64)throw new InvalidOperationException("请先连接游戏并等待账号和盘面同步");
   if(p.Validate()!="")throw new ArgumentException(p.Validate());
-  planner.ResetTactics();recovery.Reset();settings=JsonFiles.Clone(p);active=new(){Enabled=true,LuckyMode=p.LuckyMode,Owner=Guid.NewGuid().ToString("N"),Account=s.Account,ProcessId=game.Id,ProcessStart=game.Start,Expires=now+TimeSpan.FromSeconds(10).Ticks};command=0;nextAction=0;refillPending=false;refillRoom="";port.Write(active);Message="已开启，准备读取游戏状态";
+  planner.ResetTactics();recovery.Reset();settings=JsonFiles.Clone(p);active=new(){Enabled=true,LuckyMode=p.LuckyMode,Owner=Guid.NewGuid().ToString("N"),Account=s.Account,ProcessId=game.Id,ProcessStart=game.Start,Expires=now+TimeSpan.FromSeconds(10).Ticks};command=0;nextAction=0;watchAt=lastPoll=now;refillPending=false;refillRoom="";port.Write(active);Message="已开启，准备读取游戏状态";
  }
  public void SetLuckyMode(bool enabled){lock(sync){settings.LuckyMode=enabled;if(active!=null){active.LuckyMode=enabled;port.Write(active);}}}
  public void Update(Settings p){lock(sync){if(p.Validate()!="")throw new ArgumentException(p.Validate());settings=JsonFiles.Clone(p);}}
@@ -29,14 +29,27 @@ public sealed class Controller
   if(s==null||!Guards.Fresh(s,game.Id,game.Start,now)){Message="等待组件心跳；暂停发出操作，恢复后继续";return;}
   if(s.Account.Length==64&&s.Account!=active.Account){Stop("账号已切换，请核对目标后重新开启");return;}
   if(s.Account.Length==0){Message="等待账号加载";return;}
+  long elapsed=Math.Max(0,now-lastPoll);lastPoll=now;
   active.LuckyMode=settings.LuckyMode;
   active.Expires=now+TimeSpan.FromSeconds(10).Ticks;
   recovery.Sync(s);
   if(s.Owner==active.Owner&&s.State=="error"){Stop("组件已暂停："+s.Message);return;}
-  if(s.NetworkHold){port.Write(active);Message=s.NetworkMessage;return;}
   if(active.Command>0)
   {
-   if(s.Owner!=active.Owner||s.Ack<active.Command){port.Write(active);Message="等待操作确认："+active.Action.Reason;return;}
+   if(s.Owner!=active.Owner||s.Ack<active.Command)
+   {
+    bool accepted=s.Owner==active.Owner&&s.AcceptedCommand==active.Command;
+    if(accepted&&GameFlow.NetworkBlocked(s))watchAt+=elapsed;
+    bool unacceptedExpired=!accepted&&s.At>active.SnapshotAt+TimeSpan.FromSeconds(4).Ticks;
+    bool acceptedExpired=accepted&&!GameFlow.NetworkBlocked(s)&&now-watchAt>TimeSpan.FromSeconds(GameFlow.TimeoutSeconds(active.Action.Kind)+5).Ticks;
+    if(active.CancelThrough<active.Command&&(unacceptedExpired||acceptedExpired))
+    {
+     active.CancelThrough=active.Command;
+     Diagnostic?.Invoke($"#{active.Command} cancel-request stage={s.Stage} accepted={s.AcceptedCommand} ack={s.Ack} ageMs={(now-active.SnapshotAt)/TimeSpan.TicksPerMillisecond}");
+    }
+    Message=active.CancelThrough>=active.Command?"等待组件取消旧操作，恢复后重新决策":GameFlow.NetworkBlocked(s)?s.NetworkMessage:"等待操作确认："+active.Action.Reason;
+    port.Write(active);return;
+   }
    Diagnostic?.Invoke($"#{active.Command} {s.AckResult} {s.AckMessage}");
    if(s.AckResult=="error"){Stop(s.AckMessage);return;}
    if(s.AckResult is "timeout" or "retry")
@@ -47,13 +60,14 @@ public sealed class Controller
    if(s.AckResult=="ok")planner.Confirm(active.Action,s,now);
    active.Command=0;active.Action=new();nextAction=now+TimeSpan.FromMilliseconds(settings.IntervalMs).Ticks;
   }
+  if(GameFlow.NetworkBlocked(s)){port.Write(active);Message=s.NetworkMessage;return;}
   if(now<nextAction){port.Write(active);return;}
   var action=Plan(s,now);Message=action.Reason;
   if(!recovery.Ready(action,now)){Message="等待短暂冷却后重新决策："+action.Reason;port.Write(active);return;}
   if(action.Kind=="complete"){Stop(action.Reason);return;}
   if(action.Kind!="wait")
   {
-   active.Command=++command;active.Action=action;active.Room=s.Room;active.BoardKey=s.BoardKey;active.SnapshotAt=s.At;
+   active.Command=++command;active.Action=action;active.Room=s.Room;active.BoardKey=s.BoardKey;active.SnapshotAt=s.At;watchAt=now;
    Diagnostic?.Invoke($"#{command} {action.Kind} W{s.Wave} gold={s.Gold} enemy={s.EnemyCount}: {action.Reason}");
   }
   port.Write(active);

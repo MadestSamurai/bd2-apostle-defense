@@ -1,13 +1,13 @@
-# BD2 Apostle Defense v0.3.2
+# BD2 Apostle Defense v0.3.3
 
 ## 简体中文
 
 ### 更新内容
 
-- 压缩小窗口的外围留白，保留 68 格棋盘的可读尺寸，兼顾不同 Windows 字体与缩放环境。
-- 主窗口增加免费开源署名：GitHub MadestSamurai／B站 MadSamurai。
-- 新增「来源与说明」，可查看并复制官方仓库与下载链接；随界面切换中英文。
-- 统一双语 README、来源与风险说明，ZIP 附带完整说明；MIT 许可证保持不变。
+- 修复胜败结算后长时间卡住：游戏正常关闭战斗连接时，助手继续完成结算和退出。
+- 修复旧指令迟迟没有确认时一直等待的问题；恢复后根据最新界面继续，保留自动化开关。
+- 改善文件短暂占用时的恢复，避免诊断文件写入失败阻断状态同步；错误记录增加文件路径和详细原因。
+- 已经返回大厅或开始退出时及时识别状态，不重复点击退出。中英文界面同步更新。
 
 ### 下载
 
@@ -20,7 +20,7 @@
 
 ### 升级
 
-停止自动操作并关闭旧工具，再打开新版。已有设置保留；本次主要更新来源与说明界面。
+暂停并关闭旧工具，正常重启游戏，再打开新版连接。已有设置保留。本次包含连接组件修复，需要重启游戏才能加载新版。
 
 作者发布版免费。第三方收费不代表作者参与、背书或提供服务。[使用说明与风险提示](https://github.com/MadestSamurai/bd2-apostle-defense/blob/main/README.md)。
 
@@ -28,10 +28,10 @@
 
 ### Changes
 
-- Tightens surrounding spacing to preserve readable 68-cell boards in small windows across Windows font and scaling environments.
-- Adds free-release attribution to the main window: GitHub MadestSamurai / Bilibili MadSamurai.
-- Adds About & source with selectable official repository and download links, following the selected UI language.
-- Standardizes bilingual READMEs and source/risk notices, also included in ZIPs. The MIT License is unchanged.
+- Fixes long stalls after victory or defeat: the assistant continues settlement and Exit when the game normally closes the completed round's battle connection.
+- Recovers commands that were not accepted or whose readback never arrived, then resumes from the current screen without turning automation off.
+- Adds bounded recovery from temporary file contention. Failed diagnostic writes no longer block state updates, and errors include file paths and detailed causes.
+- Recognizes arrival in the lobby and exits already in progress without clicking Exit twice. Both UI languages are updated.
 
 ### Downloads
 
@@ -44,58 +44,6 @@ Both builds have identical features and include Simplified Chinese / English. EX
 
 ### Upgrade
 
-Stop automation and close the old tool, then open the new version. Existing settings are retained; this update primarily changes attribution and source information.
+Pause and close the old assistant, restart the game normally, then connect with the new version. Existing settings are retained. This update replaces the connection component, so restarting the game is required.
 
 Official releases are free. Third-party fees do not imply the author's involvement, endorsement or support. [Usage and risk notice](https://github.com/MadestSamurai/bd2-apostle-defense/blob/main/README.en.md).
-
----
-
-# BD2 Apostle Defense v0.3.0
-
-## 简体中文
-
-### 更新内容
-
-- 改善网络短暂波动时的接续，减少外部探测误触发的断连；恢复期间保留任务，等待连接和盘面同步后继续。
-- 增加网络状态和诊断记录，区分短暂探测失败与真正断线。
-- 新增「好运模式」，默认关闭，每次开启需确认风险；重启工具后恢复关闭。
-- 中英文界面同步更新，继续提供 Portable／Lite 双版本。
-
-### 下载
-
-| 版本 | 运行环境 | 建议 |
-| --- | --- | --- |
-| **Portable** | 内置 .NET 运行时 | 首次使用推荐，下载即用 |
-| **Lite** | 需安装 [.NET Desktop Runtime 8 x64](https://dotnet.microsoft.com/download/dotnet/8.0) | 已安装运行时，下载更小 |
-
-适用于 Windows x64。EXE 可独立运行，ZIP 附说明与许可证；使用 `SHA256SUMS.txt` 校验下载。两版功能相同，均内置简体中文／English。
-
-### 升级
-
-暂停并关闭旧工具，正常重启游戏，再打开新版连接。本机设置保留；具体功能与设置迁移见上面的更新内容。
-
-[使用说明与风险声明](https://github.com/MadestSamurai/bd2-apostle-defense/blob/main/README.md)
-
-## English
-
-### Changes
-
-- Improves recovery from brief network interruptions and reduces disconnects caused by external connectivity checks. Tasks wait for the connection and board to synchronize, then continue.
-- Adds network status and diagnostics to distinguish temporary probe failures from actual disconnections.
-- Adds **Lucky mode**, off by default. Each activation requires risk confirmation; restarting the assistant turns it off.
-- Updates both interface languages and retains Portable / Lite editions.
-
-### Downloads
-
-| Edition | Runtime requirement | Recommended for |
-| --- | --- | --- |
-| **Portable** | .NET included | Most users; download and run |
-| **Lite** | [.NET Desktop Runtime 8 x64](https://dotnet.microsoft.com/download/dotnet/8.0) | Smaller download if the runtime is installed |
-
-For Windows x64. EXEs run on their own; ZIPs include documentation and licenses. Verify downloads against `SHA256SUMS.txt`. Both editions have the same features and include Simplified Chinese / English.
-
-### Upgrade
-
-Pause and close the old assistant, restart the game normally, then connect with the new version. Local preferences are retained; see Changes above for feature and setting migrations.
-
-[Usage and risk disclaimer](https://github.com/MadestSamurai/bd2-apostle-defense/blob/main/README.en.md)

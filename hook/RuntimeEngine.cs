@@ -39,7 +39,19 @@ namespace BD2ApostleDefense.Runtime
   private void IO()
   {
    if(Interlocked.Exchange(ref ioBusy,1)!=0)return;
-   try{if(stopped)return;var c=Storage.Read<Control>("control.json");if(c!=null)control=c;Storage.Write("snapshot.json",latest);var e=evidence;if(e!=null&&e!=savedEvidence){Storage.Write("last-action.json",e);savedEvidence=e;}FlowEvidence entry;while(flow.TryPeek(out entry)){Storage.AppendFlow(entry);flow.TryDequeue(out entry);}try{NetworkGuard.Flush();}catch{}Loader.Status("active","");}catch{}finally{Interlocked.Exchange(ref ioBusy,0);}
+   try
+   {
+    if(stopped)return;
+    // A failed evidence/log write must not suppress commands, snapshots or the heartbeat.
+    IoDiagnostics.Attempt(Identity.Root,"control-read","control.json",()=>{var c=Storage.Read<Control>("control.json");if(c!=null)control=c;});
+    var snapshot=latest;
+    IoDiagnostics.Attempt(Identity.Root,"snapshot-write","snapshot.json",()=>Storage.Write("snapshot.json",snapshot));
+    var e=evidence;if(e!=null&&e!=savedEvidence&&IoDiagnostics.Attempt(Identity.Root,"action-write","last-action.json",()=>Storage.Write("last-action.json",e)))savedEvidence=e;
+    IoDiagnostics.Attempt(Identity.Root,"flow-append","flow-current.jsonl",()=>{FlowEvidence entry;while(flow.TryPeek(out entry)){Storage.AppendFlow(entry);flow.TryDequeue(out entry);}});
+    IoDiagnostics.Attempt(Identity.Root,"network-append","network-current.jsonl",()=>NetworkGuard.Flush());
+    IoDiagnostics.Attempt(Identity.Root,"heartbeat-write","runtime.json",()=>Loader.Status("active",""));
+   }
+   finally{Interlocked.Exchange(ref ioBusy,0);}
   }
   private static int N(string role,object o)=>Convert.ToInt32(B.Read(role,o)??0);
   private static bool Flag(string role,object o)=>B.Read(role,o) is bool value&&value;
@@ -54,7 +66,7 @@ namespace BD2ApostleDefense.Runtime
    try
    {
     if(now-lastScan>TimeSpan.FromMilliseconds(400).Ticks){surfaces=UnityEngine.Object.FindObjectsOfType<UIBase>().Where(B.Active).ToArray();lastScan=now;}
-    NetworkGuard.Pump();Read(s);NetworkGuard.Apply(s);observed=s;
+    Read(s);NetworkGuard.Apply(s);observed=s;
     if(s.Account!=account){account=s.Account;achievementsKnown=false;achievementRequest=false;clearProgress=rareProgress=0;catalog=null;fault="";}
     // A complete native result must be settled before refreshing the server-backed counters.
     if(s.Stage=="lobby"&&lastStage!="lobby")achievementsKnown=false;
@@ -64,7 +76,13 @@ namespace BD2ApostleDefense.Runtime
     if(c.Owner!=owner){CancelSelection();pending=null;owner=c.Owner;handled=ack=0;fault="";ackMessage=ackResult="";}
     s.Owner=owner;
     if(fault.Length>0){s.State="error";s.Message=fault;Publish(s);return;}
-    if(s.NetworkHold){if(pending!=null)pendingAt+=elapsed;s.State="network-wait";s.Message=s.NetworkMessage;Publish(s);return;}
+    // Cancellation is an acknowledged barrier, including during a real network outage.
+    if(c.Command>ack&&c.Command<=c.CancelThrough)
+    {handled=Math.Max(handled,c.CancelThrough);Finish(pending??c,"retry","旧操作已取消，按当前界面重新决策");s.State="ready";Publish(s);return;}
+    // Scene evidence can complete an old action even before battle networking recovers.
+    if(pending!=null&&(GameFlow.Superseded(pending.Action.Kind,before,s)||GameFlow.Receipt(pending.Action.Kind,before,s)))
+    {Continue(s,now);Publish(s);return;}
+    if(GameFlow.NetworkBlocked(s)){if(pending!=null)pendingAt+=elapsed;s.State="network-wait";s.Message=s.NetworkMessage;Publish(s);return;}
     if(pending!=null){Continue(s,now);Publish(s);return;}
     if(c.Command>handled&&c.Action.Kind!="wait")
     {
@@ -81,9 +99,9 @@ namespace BD2ApostleDefense.Runtime
   }
   private void Publish(Snapshot s)
   {
-   s.Owner=owner;s.Ack=ack;s.AckResult=ackResult;s.AckMessage=ackMessage;latest=s;
-   var key=s.Stage+"|"+s.State+"|"+s.Blocker+"|"+s.Win+"|"+s.Dead+"|"+s.RoomEnded+"|"+s.Exiting+"|"+(pending==null?0:pending.Command)+"|"+ack;
-   if(key!=flowKey){flowKey=key;flow.Enqueue(new FlowEvidence{At=s.At,ProcessId=pid,Runtime=Identity.Runtime,Stage=s.Stage,State=s.State,Blocker=s.Blocker,Win=s.Win,Dead=s.Dead,RoomEnded=s.RoomEnded,Exiting=s.Exiting,Wave=s.Wave,Command=pending==null?0:pending.Command,Action=pending==null?"":pending.Action.Kind,Ack=ack,AckResult=ackResult,Message=s.Message});FlowEvidence drop;while(flow.Count>256)flow.TryDequeue(out drop);}
+   s.AcceptedCommand=pending==null?0:pending.Command;s.Owner=owner;s.Ack=ack;s.AckResult=ackResult;s.AckMessage=ackMessage;latest=s;
+   var key=s.Stage+"|"+s.State+"|"+s.Blocker+"|"+s.Win+"|"+s.Dead+"|"+s.RoomEnded+"|"+s.Exiting+"|"+(pending==null?0:pending.Command)+"|"+ack+"|"+s.NetworkHold;
+   if(key!=flowKey){flowKey=key;flow.Enqueue(new FlowEvidence{At=s.At,ProcessId=pid,Runtime=Identity.Runtime,Stage=s.Stage,State=s.State,Blocker=s.Blocker,Win=s.Win,Dead=s.Dead,RoomEnded=s.RoomEnded,Exiting=s.Exiting,Wave=s.Wave,Command=pending==null?0:pending.Command,Action=pending==null?"":pending.Action.Kind,Ack=ack,AcceptedCommand=s.AcceptedCommand,NetworkHold=s.NetworkHold,AckResult=ackResult,Message=s.Message});FlowEvidence drop;while(flow.Count>256)flow.TryDequeue(out drop);}
   }
   private void CancelSelection(){if(pending!=null&&(pending.Action.Kind=="sell"||pending.Action.Kind=="move")&&manager!=null){try{B.InvokeOn("Manager.ClearSelection",manager);}catch{}}}
   private void Finish(Control c,string result,string message){CancelSelection();ack=c.Command;ackResult=result;ackMessage=message;evidence=new ActionEvidence{At=DateTime.UtcNow.Ticks,Result=result,Message=message,Command=c,Before=pending==c?before:observed,After=observed};pending=null;actionPhase=0;}
@@ -122,7 +140,7 @@ namespace BD2ApostleDefense.Runtime
    if(hud!=null&&GameFlow.RoundFinished(s)&&(s.Stage=="waiting-round"||s.Stage=="playing"))s.Stage="ended";
    if(s.Exiting&&s.Stage!="lobby")s.Stage="settling";
    var network=B.Read("Services.Network",null);if(network!=null){s.Room=Convert.ToString(B.Read("Network.Room",network));s.RoundRare=N("Network.Rare",network);}
-   NetworkGuard.Apply(s);if(s.NetworkHold)return;
+   NetworkGuard.Pump(s);NetworkGuard.Apply(s);if(GameFlow.NetworkBlocked(s))return;
    // Native death clears my objects and can switch to another player's view. Settlement must not
    // depend on that board, its camera, upgrade controls, or enemies still being available.
    if(hud==null||field==null||s.Stage!="playing"||GameFlow.RoundFinished(s)||s.Exiting)return;

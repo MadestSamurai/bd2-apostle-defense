@@ -18,8 +18,8 @@ namespace BD2ApostleDefense.Runtime
             using(var f=new FileStream(path,FileMode.Append,FileAccess.Write,FileShare.Read)){new DataContractJsonSerializer(typeof(FlowEvidence)).WriteObject(f,value);f.WriteByte(10);}
         }
         internal static T Read<T>(string name) where T:class
-        {try{using(var f=new FileStream(Path.Combine(Identity.Root,name),FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))return (T)new DataContractJsonSerializer(typeof(T)).ReadObject(f);}catch{return null;}}
+        {try{using(var f=new FileStream(Path.Combine(Identity.Root,name),FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete))return (T)new DataContractJsonSerializer(typeof(T)).ReadObject(f);}catch(FileNotFoundException){return null;}catch(DirectoryNotFoundException){return null;}catch(Exception e){IoDiagnostics.Record(Identity.Root,"read",Path.Combine(Identity.Root,name),e);return null;}}
         internal static void Write(string name,object value)
-        {Directory.CreateDirectory(Identity.Root);var path=Path.Combine(Identity.Root,name);var temp=path+"."+Guid.NewGuid().ToString("N")+".tmp";try{using(var f=File.Create(temp))new DataContractJsonSerializer(value.GetType()).WriteObject(f,value);if(File.Exists(path))File.Replace(temp,path,null);else File.Move(temp,path);}finally{if(File.Exists(temp))File.Delete(temp);}}
+        {AtomicFiles.Write(Path.Combine(Identity.Root,name),f=>new DataContractJsonSerializer(value.GetType()).WriteObject(f,value));}
     }
 }

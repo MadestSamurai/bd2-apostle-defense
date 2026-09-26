@@ -8,7 +8,7 @@ namespace BD2ApostleDefense
 {
  public static class Identity
  {
-  public const string Version="0.3.2",Runtime="BD2ApostleDefense.Runtime6";
+  public const string Version="0.3.3",Runtime="BD2ApostleDefense.Runtime7";
   public static string Root {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"BD2ApostleDefense");}}
   public static string Hash(string value){using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(value))).Replace("-","").ToLowerInvariant();}
  }
@@ -33,7 +33,7 @@ namespace BD2ApostleDefense
  [DataContract] public class Snapshot
  {
   [DataMember] public string Runtime=Identity.Runtime,Account="",Name="",Room="",Stage="waiting",State="idle",Message="",Owner="",AckResult="",AckMessage="",Blocker="",BoardKey="";
-  [DataMember] public long At,ProcessStart,Sequence,Ack;
+  [DataMember] public long At,ProcessStart,Sequence,Ack,AcceptedCommand;
   [DataMember] public int ProcessId,Wave,Gold,EnemyCount,RoundRare,ClearProgress,RareProgress,ClearTarget=1,RareTarget=3;
   [DataMember] public bool Ready,AchievementsKnown,CanSummon,Win,Dead,MyView,RoomEnded,CanStartMatch,Exiting,EventPopupOpen,CanDismissEvent;
   [DataMember] public bool NetworkHold;
@@ -65,7 +65,7 @@ namespace BD2ApostleDefense
  {
   [DataMember] public bool Enabled,LuckyMode;
   [DataMember] public string Owner="",Account="",Room="",BoardKey="";
-  [DataMember] public long ProcessStart,Expires,Command,SnapshotAt;
+  [DataMember] public long ProcessStart,Expires,Command,SnapshotAt,CancelThrough;
   [DataMember] public int ProcessId;
   [DataMember] public Decision Action=new Decision();
  }
@@ -79,10 +79,10 @@ namespace BD2ApostleDefense
  }
  [DataContract] public class FlowEvidence
  {
-  [DataMember] public long At,Command,Ack;
+  [DataMember] public long At,Command,Ack,AcceptedCommand;
   [DataMember] public int ProcessId,Wave;
   [DataMember] public string Runtime="",Stage="",State="",Blocker="",Action="",AckResult="",Message="";
-  [DataMember] public bool Win,Dead,RoomEnded,Exiting;
+  [DataMember] public bool Win,Dead,RoomEnded,Exiting,NetworkHold;
  }
  [DataContract] public class NetworkEvidence
  {
@@ -100,7 +100,7 @@ namespace BD2ApostleDefense
    if(c==null||!c.Enabled||c.Expires<now||c.Expires>now+TimeSpan.FromSeconds(15).Ticks)return "控制租约失效";
    if(c.Owner.Length!=32||c.Account.Length!=64||c.Account!=s.Account||c.ProcessId!=s.ProcessId||c.ProcessStart!=s.ProcessStart)return "账号或进程已变化";
    if(c.SnapshotAt<now-TimeSpan.FromSeconds(3).Ticks||c.SnapshotAt>now+TimeSpan.FromSeconds(1).Ticks)return "决策盘面过期";
-   if(s.NetworkHold)return s.NetworkMessage.Length>0?s.NetworkMessage:"网络恢复中，保留任务并等待服务器与盘面同步";
+   if(GameFlow.NetworkBlocked(s))return s.NetworkMessage.Length>0?s.NetworkMessage:"网络恢复中，保留任务并等待服务器与盘面同步";
    if(c.Room!=s.Room||c.BoardKey!=s.BoardKey)return "盘面已变化，重新决策";
    if(c.Action.Kind=="close-event")return s.Stage=="lobby"&&!s.Exiting&&s.CanDismissEvent?"":"等待可关闭的大厅活动弹窗";
    if(s.Blocker.Length>0)return "等待关闭弹窗："+s.Blocker;
@@ -116,7 +116,7 @@ namespace BD2ApostleDefense
    if(a.Kind=="confirm-exit"&&(s.Stage!="confirm-exit"||!GameFlow.CanSettle(s)))return "不自动放弃进行中的对局或重复提交退出";
    if(a.Kind=="summon"||a.Kind=="sell"||a.Kind=="upgrade"||a.Kind=="move")
    {
-    if(!s.Ready||s.Stage!="playing"||!s.MyView)return "等待己方战斗盘面";
+    if(!s.Ready||s.Stage!="playing"||!s.MyView||GameFlow.RoundFinished(s)||s.Exiting)return "等待己方战斗盘面";
     if(a.Kind=="summon"&&(!s.CanSummon||s.Gold<s.Catalog.SummonCost||s.Units.Length>=s.Boards.Length))return "召唤条件变化";
     if(a.Kind=="upgrade"&&(a.Element<0||a.Element>=5||!s.CanUpgrade[a.Element]||s.UpgradeCosts[a.Element]<=0||s.Gold<s.UpgradeCosts[a.Element]))return "升级条件变化";
     if(a.Kind=="sell"||a.Kind=="move")

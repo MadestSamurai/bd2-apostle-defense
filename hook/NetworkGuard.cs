@@ -84,12 +84,12 @@ namespace BD2ApostleDefense.Runtime
    if(found==null||callback==null||!ReferenceEquals(callback.Target,tcp)){RestoreTimeout();return;}
    if(!ReferenceEquals(monitor,found)){RestoreTimeout();monitor=found;originalTimeout=Convert.ToInt32(timeout.GetValue(found));if(originalTimeout<3000)timeout.SetValue(found,3000);}
   }
-  internal static void Pump()
+  internal static void Pump(Snapshot s)
   {
    object invoke=null;
    lock(sync){var tcp=defense.GetValue(null) as object;
     if(!IsDefense(tcp)){RestoreTimeout();active=false;state="inactive";return;}
-    Bind(tcp);ConfigureProbe(tcp);
+    Bind(tcp);if(!GameFlow.NeedsBattleConnection(s)){RestoreTimeout();return;}ConfigureProbe(tcp);
     if(policy.Tick(Now,Connected(tcp))){invoke=tcp;Record("probe-grace-expired-native");}
    }
    if(invoke!=null){try{bypass=true;B.InvokeOn("Net.Lost",invoke);}finally{bypass=false;}}
@@ -98,7 +98,7 @@ namespace BD2ApostleDefense.Runtime
   {
    lock(sync){
     // The connection may remain allocated after returning to the lobby. Never block lobby flow.
-    bool inRound=active&&s.Room.Length>0&&(s.Stage=="playing"||s.Stage=="waiting-round"||s.Stage=="ended"||s.Stage=="result"||s.Stage=="confirm-exit"||s.Stage=="settling");
+    bool inRound=active&&GameFlow.NeedsBattleConnection(s);
     if(s.Room.Length>0&&room!=s.Room){if(room.Length>0)policy.NewConnection(false);room=s.Room;}
     bool hold=inRound&&policy.Hold(Connected(current));
     string next=!inRound?"inactive":policy.ServerClosed?"server-closed":hold&&policy.AwaitingRound?"waiting-room":hold?"recovering":policy.Deferred?"probe-degraded":"healthy";

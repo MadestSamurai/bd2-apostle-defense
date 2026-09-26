@@ -7,7 +7,7 @@ Requires Windows x64 and .NET 8 SDK. 普通构建不需要安装游戏。
 ./package.ps1 -Locked
 ```
 
-The package script produces `dist/v0.3.0/`: Portable/Lite EXE and ZIP, `SHA256SUMS.txt`, `release.json`. It refuses to overwrite an existing release directory. Build products live in ignored `.build/`, `bin/` and `obj/` folders.
+The package script produces `dist/v0.3.3/`: Portable/Lite EXE and ZIP, `SHA256SUMS.txt`, `release.json`. It refuses to overwrite an existing release directory. Build products live in ignored `.build/`, `bin/` and `obj/` folders.
 
 - `shared/`: snapshot and command protocol, guards and native flow.
 - `planner/`: ordinary-wave assignment and short-horizon boss pursuit.
@@ -52,3 +52,13 @@ Lucky mode defaults to off and requires a new confirmation every time it is enab
 README、仓库简介和 Release 统一遵循 [Publication style](PUBLICATION_STYLE.md)。新版本从 [Release template](RELEASE_TEMPLATE.md) 开始，更新 [当前版本说明](RELEASE_NOTES.md) 后再打包。
 
 Use the shared format for READMEs, repository descriptions and releases. Update both languages and release notes before packaging.
+
+## Settlement recovery in 0.3.3
+
+Runtime7 distinguishes `RoomEnded` from own-player death. The completed room no longer needs battle TCP recovery; an unfinished disconnected room still blocks game inputs. The frame pump reads the room lifecycle before considering network recovery. Scene receipts and obsolete board actions are reconciled before the network wait gate.
+
+Snapshots expose `AcceptedCommand`. Missing acceptance after a fresh snapshot is more than four seconds newer than the original decision, or accepted readback beyond its execution deadline plus five seconds, requests `CancelThrough`. The component acknowledges retirement before the controller issues another command. This retires the tool's waiting state; it does not undo a native action already submitted to the game. Decision timestamps are never refreshed to make stale commands look valid. Genuine live-network recovery pauses the accepted operation's watchdog. Receipt processing and manual pause remain available.
+
+Atomic writes retry replacement three times with bounded 20/40 ms delays, preserve the previous complete file on failure and remove temporary files. Hook command reads, snapshot publication, action evidence, flow logs, network logs and heartbeat publication run as isolated I/O steps. Each process writes rotating `io-errors-<pid>.log` diagnostics with path, operation, exception, HResult and stack; matching failures are limited to one entry every 15 seconds. All blocking I/O remains off Unity's frame thread.
+
+`SettlementRecoveryTests`, `AtomicFilesTests` and actual network-adapter regressions cover normal terminal disconnect, own-player death, late/lost acknowledgments, a four-hour simulated wait, cancellation barriers, lobby transitions, real network recovery, file locks, partial serialization, concurrent readers/writers and logging failure isolation. Generated fixtures contain no user logs. Continuous live cross-round verification is still required separately.

@@ -281,5 +281,7 @@
   "源码与官方下载（可选择复制）": "Official source and downloads (select to copy)",
   "关闭": "Close",
   "BD2 使徒防守助手 · 0.3.1": "BD2 Apostle Defense · 0.3.1",
-  "BD2 使徒防守助手 · 0.3.2": "BD2 Apostle Defense · 0.3.2"
+  "BD2 使徒防守助手 · 0.3.2": "BD2 Apostle Defense · 0.3.2",
+  "等待组件取消旧操作，恢复后重新决策": "Waiting for the component to cancel the old action before replanning",
+  "旧操作已取消，按当前界面重新决策": "Old action cancelled; replanning from the current screen"
 }

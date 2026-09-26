@@ -14,7 +14,7 @@ public partial class MainWindow:Window
  private readonly WindowLanguage language;
  private readonly IClientPort port;private readonly Controller controller;private readonly string root;private readonly bool smoke;
  private readonly DispatcherTimer timer=new(){Interval=TimeSpan.FromMilliseconds(150)};
- private readonly ObservableCollection<string> logs=new();private readonly object logLock=new();private Snapshot? snapshot;private bool busy,initialized;
+ private readonly ObservableCollection<string> logs=new();private readonly object logLock=new();private Snapshot? snapshot;private bool busy,initialized;private string lastRefreshError="";private long lastRefreshErrorAt;
  public MainWindow(IClientPort port,string root,bool smoke=false)
  {
   this.port=port;this.root=root;this.smoke=smoke;controller=new(port);InitializeComponent();BD2.Distribution.DistributionNotice.Attach(this,LanguageChoice);language=new WindowLanguage(this,LanguagePreference.Read(root));Ui.Catalog=language.Catalog;LanguageChoice.SelectedIndex=language.Catalog.Language=="zh-CN"?0:1;LogList.ItemsSource=logs;
@@ -55,7 +55,7 @@ public partial class MainWindow:Window
  }
  private async void Connect(object sender,RoutedEventArgs e)
  {
-  ConnectButton.IsEnabled=false;try{await port.ConnectAsync(t=>Dispatcher.Invoke(()=>StatusText.Text=t),CancellationToken.None);Log("连接已请求，等待组件首次心跳");await Refresh();}catch(Exception ex){StatusText.Text=ex.Message;Log(ex.Message);}finally{ConnectButton.IsEnabled=true;}
+  ConnectButton.IsEnabled=false;try{await port.ConnectAsync(t=>Dispatcher.Invoke(()=>StatusText.Text=t),CancellationToken.None);Log("连接已请求，等待组件首次心跳");await Refresh();}catch(Exception ex){StatusText.Text=ex.Message;string key=ex.GetType().Name+"|"+ex.Message;long now=DateTime.UtcNow.Ticks;IoDiagnostics.Record(root,"desktop-refresh",System.IO.Path.Combine(root,"control.json"),ex);if(key!=lastRefreshError||now-lastRefreshErrorAt>TimeSpan.FromSeconds(15).Ticks){lastRefreshError=key;lastRefreshErrorAt=now;Log(ex.ToString());}}finally{ConnectButton.IsEnabled=true;}
  }
  private async void Start(object sender,RoutedEventArgs e)
  {try{if(snapshot==null)throw new InvalidOperationException("尚未读取游戏状态");controller.Start(snapshot,ReadSettings(),DateTime.UtcNow.Ticks);SettingsChanged(null,e);await Refresh();}catch(Exception ex){SettingsError.Text=ex.Message;}}
@@ -84,7 +84,7 @@ public partial class MainWindow:Window
    FocusText.Text=controller.Running?controller.Focus:"当前决策";DecisionText.Text=controller.Running?controller.Message:s.State=="error"?s.Message:"已暂停；可调整目标后开启。";
    BoardView.Update(s,controller.PendingDecision);
   }
-  catch(Exception ex){StatusText.Text=ex.Message;Log(ex.Message);}
+  catch(Exception ex){StatusText.Text=ex.Message;string key=ex.GetType().Name+"|"+ex.Message;long now=DateTime.UtcNow.Ticks;IoDiagnostics.Record(root,"desktop-refresh",System.IO.Path.Combine(root,"control.json"),ex);if(key!=lastRefreshError||now-lastRefreshErrorAt>TimeSpan.FromSeconds(15).Ticks){lastRefreshError=key;lastRefreshErrorAt=now;Log(ex.ToString());}}
   finally{busy=false;}
  }
  private void Log(string text)

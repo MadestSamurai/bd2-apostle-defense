@@ -12,7 +12,7 @@ A standalone Apostle Defense assistant for the BrownDust II Windows client. Work
 
 ## Download
 
-Current version: **0.3.2**. Both editions have the same features and include Simplified Chinese / English.
+Current version: **0.3.3**. Both editions have the same features and include Simplified Chinese / English.
 
 | Edition | Runtime requirement | Recommended for |
 | --- | --- | --- |
@@ -33,7 +33,8 @@ Download one edition: the EXE runs on its own; ZIPs include both READMEs and lic
 ## Features and settings
 
 - **Lucky mode** is off by default. Each activation requires risk confirmation, and restarting the assistant resets it to off.
-- Brief network interruptions preserve the task until the connection and board recover. External connectivity checks no longer immediately tear down an otherwise healthy game connection.
+- Brief network interruptions preserve the task until the connection and board recover. Normal disconnection after the entire round ends no longer blocks settlement or Exit.
+- Missing acceptance or overdue readback first retires the old command with component confirmation, then replans from the current screen. Temporary file contention gets bounded retries; a diagnostic-write failure does not block state updates.
 
 - The 68-cell board shows actual positions, elements, tiers, enemies and move arrows. Click a unit to inspect its stats, range and route coverage. Inspection does not control the game; arrow keys navigate and Esc clears selection.
 - English cells use Wa / Fi / Wi / Li / Da for Water / Fire / Wind / Light / Dark, followed by tier. Tooltips and selection details show full names.
@@ -66,6 +67,7 @@ Settings, language and diagnostics are under `%LOCALAPPDATA%\BD2ApostleDefense`;
 | `decisions-date.log` | Decisions, readbacks, recovery and stop reasons |
 | `flow-current.jsonl` / `flow-previous.jsonl` | Matching, battle, results and popup transitions |
 | `network-current.jsonl` / `network-previous.jsonl` | Connectivity checks, recovery and waiting reasons |
+| `io-errors-process-id.log` | File operation paths, error codes and stack traces, with repeated errors rate-limited |
 | `last-action.json` | Before/after snapshots and the latest action outcome |
 | `compatibility.json` / `runtime.json` | Component compatibility and status |
 

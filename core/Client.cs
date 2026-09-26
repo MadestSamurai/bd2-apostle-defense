@@ -6,8 +6,8 @@ namespace BD2ApostleDefense;
 public static class JsonFiles
 {
     public static readonly JsonSerializerOptions Options=new(){IncludeFields=true,WriteIndented=true};
-    public static T? Read<T>(string path)where T:class{try{using var f=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete);return JsonSerializer.Deserialize<T>(f,Options);}catch(Exception e)when(e is IOException or UnauthorizedAccessException or JsonException){return null;}}
-    public static void Write<T>(string path,T value){Directory.CreateDirectory(Path.GetDirectoryName(Path.GetFullPath(path))!);string temp=path+"."+Guid.NewGuid().ToString("N")+".tmp";try{using(var f=new FileStream(temp,FileMode.CreateNew,FileAccess.Write,FileShare.None)){JsonSerializer.Serialize(f,value,Options);f.Flush(true);}File.Move(temp,path,true);}finally{if(File.Exists(temp))File.Delete(temp);}}
+    public static T? Read<T>(string path)where T:class{try{using var f=new FileStream(path,FileMode.Open,FileAccess.Read,FileShare.ReadWrite|FileShare.Delete);return JsonSerializer.Deserialize<T>(f,Options);}catch(FileNotFoundException){return null;}catch(DirectoryNotFoundException){return null;}catch(Exception e)when(e is IOException or UnauthorizedAccessException or JsonException){IoDiagnostics.Record(Path.GetDirectoryName(Path.GetFullPath(path))!,"read",path,e);return null;}}
+    public static void Write<T>(string path,T value)=>AtomicFiles.Write(path,f=>JsonSerializer.Serialize(f,value,Options));
     public static T Clone<T>(T value)=>JsonSerializer.Deserialize<T>(JsonSerializer.Serialize(value,Options),Options)!;
 }
 public sealed record GameProcess(int Id,long Start,string File);

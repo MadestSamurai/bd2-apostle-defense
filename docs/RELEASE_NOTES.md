@@ -1,49 +1,41 @@
-# BD2 Apostle Defense v0.3.3
+# BD2 Apostle Defense v0.3.5
 
 ## 简体中文
 
-### 更新内容
+### 修复
 
-- 修复胜败结算后长时间卡住：游戏正常关闭战斗连接时，助手继续完成结算和退出。
-- 修复旧指令迟迟没有确认时一直等待的问题；恢复后根据最新界面继续，保留自动化开关。
-- 改善文件短暂占用时的恢复，避免诊断文件写入失败阻断状态同步；错误记录增加文件路径和详细原因。
-- 已经返回大厅或开始退出时及时识别状态，不重复点击退出。中英文界面同步更新。
+- 修复结算退出后游戏清空胜败状态、残留结果弹窗导致无法续局的问题。已确认的结束状态保留到返回大厅或开始新局，超时后按当前界面恢复。
+- 连接和读写改为后台处理，连接期间不轮询，避免连接、暂停、关闭窗口时界面未响应。
+- 暂停立即生效，迟到的启动或续约不能重新开启自动化；关窗最多等待两秒停止通知，通信不可用时由短租约到期停用。
+- 从点击连接开始记录诊断，包含接口检查、组件连接、交接及持续等待阶段。
 
 ### 下载
 
-| 版本 | 运行环境 | 建议 |
+两版功能相同，均为单 EXE、内置简体中文与 English。
+
+| 版本 | 运行环境 | 适合用户 |
 | --- | --- | --- |
-| **Portable** | 自带 .NET，无需另装运行库 | 大多数用户 |
-| **Lite** | 需要 .NET Desktop Runtime 8 x64 | 已安装桌面运行库、希望减小下载体积 |
+| Portable | 内置 .NET | 下载后直接运行 |
+| Lite | 需要 .NET Desktop Runtime 8 x64 | 已安装运行时，下载更小 |
 
-两版功能相同，内置简体中文／English。EXE 可独立使用；ZIP 附带双语说明与许可证。用 `SHA256SUMS.txt` 核对下载。
-
-### 升级
-
-暂停并关闭旧工具，正常重启游戏，再打开新版连接。已有设置保留。本次包含连接组件修复，需要重启游戏才能加载新版。
-
-作者发布版免费。第三方收费不代表作者参与、背书或提供服务。[使用说明与风险提示](https://github.com/MadestSamurai/bd2-apostle-defense/blob/main/README.md)。
+暂停并关闭旧工具后更新。从 0.3.4 或更新版可保持游戏运行；从 0.3.3 及更早组件首次迁移需正常重启游戏一次。设置继续保留。
 
 ## English
 
-### Changes
+### Fixes
 
-- Fixes long stalls after victory or defeat: the assistant continues settlement and Exit when the game normally closes the completed round's battle connection.
-- Recovers commands that were not accepted or whose readback never arrived, then resumes from the current screen without turning automation off.
-- Adds bounded recovery from temporary file contention. Failed diagnostic writes no longer block state updates, and errors include file paths and detailed causes.
-- Recognizes arrival in the lobby and exits already in progress without clicking Exit twice. Both UI languages are updated.
+- Retains confirmed round completion when the game clears its win/loss flags before the result popup disappears. Exit can recover after a timeout and continue to the next round.
+- Moves connection and communication off the UI thread, suspends polling during connection, and keeps Pause and Close responsive.
+- Pause immediately revokes local automation; delayed starts and renewals cannot enable it again. Close waits at most two seconds for notification; an unavailable connection falls back to lease expiry.
+- Records connection diagnostics from the first click, including interface checks, injection stages, handoff and ongoing waits.
 
 ### Downloads
 
-| Build | Runtime | Recommended for |
+Same features in both editions; one EXE with built-in Simplified Chinese and English.
+
+| Edition | Runtime | Recommended for |
 | --- | --- | --- |
-| **Portable** | Includes .NET; no separate runtime needed | Most users |
-| **Lite** | Requires .NET Desktop Runtime 8 x64 | Smaller download when the desktop runtime is installed |
+| Portable | Included | Download and run |
+| Lite | .NET Desktop Runtime 8 x64 required | Smaller download with an installed runtime |
 
-Both builds have identical features and include Simplified Chinese / English. EXEs run independently; ZIPs include bilingual documentation and licenses. Verify downloads with `SHA256SUMS.txt`.
-
-### Upgrade
-
-Pause and close the old assistant, restart the game normally, then connect with the new version. Existing settings are retained. This update replaces the connection component, so restarting the game is required.
-
-Official releases are free. Third-party fees do not imply the author's involvement, endorsement or support. [Usage and risk notice](https://github.com/MadestSamurai/bd2-apostle-defense/blob/main/README.en.md).
+Pause and close the old assistant before updating. Keep the game running when upgrading from 0.3.4 or later. Migration from 0.3.3 or earlier requires one normal game restart. Existing settings remain available.

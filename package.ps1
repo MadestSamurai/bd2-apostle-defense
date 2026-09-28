@@ -1,4 +1,4 @@
-﻿param([string]$Version='', [switch]$Locked)
+param([string]$Version='', [switch]$Locked)
 $ErrorActionPreference='Stop'
 $declared=([xml](Get-Content (Join-Path $PSScriptRoot 'Directory.Build.props') -Raw)).Project.PropertyGroup.Version
 if(!$Version){$Version=$declared}
@@ -28,10 +28,14 @@ foreach($flavor in @('Portable','Lite')){
     $identityPath=Join-Path $check 'identity.json'
     RunCheck @('--identity',('"'+$identityPath+'"'))
     $identity=Get-Content $identityPath -Raw | ConvertFrom-Json
-    if($identity.runtime -ne 'BD2ApostleDefense.Runtime7' -or $identity.version -ne $Version){throw 'Embedded identity differs from release'}
+    if($identity.runtime -ne 'BD2ApostleDefense.Runtime8' -or $identity.version -ne $Version){throw 'Embedded identity differs from release'}
     RunCheck @('--smoke',('"'+$check+'"'))
     $ui=Get-Content (Join-Path $check 'smoke.json') -Raw | ConvertFrom-Json
     if($ui.status -ne 'passed'){throw 'Packaged UI regression failed'}
+    $connectionCheck=Join-Path $check 'connection';New-Item -ItemType Directory -Force -Path $connectionCheck | Out-Null
+    RunCheck @('--connection-smoke',('"'+$connectionCheck+'"'))
+    $connection=Get-Content (Join-Path $connectionCheck 'connection-smoke.json') -Raw | ConvertFrom-Json
+    if($connection.status -ne 'passed'){throw 'Packaged connection responsiveness failed'}
     # Check actual host configuration, not just the filename or publish flags.
     $configs=@(Get-ChildItem -LiteralPath (Join-Path $buildArtifacts 'bin') -Recurse -File -Filter 'BD2ApostleDefense.runtimeconfig.json')
     if($configs.Count -ne 1){throw 'Runtime config not unique'}
@@ -49,7 +53,7 @@ foreach($flavor in @('Portable','Lite')){
     Copy-Item -LiteralPath (Join-Path $PSScriptRoot 'docs') -Destination $bundle -Recurse
     Compress-Archive -LiteralPath $bundle -DestinationPath $zipPath -CompressionLevel Optimal
     $assets+=@($exePath,$zipPath)
-    $flavors += [ordered]@{name=$flavor;selfContained=($selfContained -eq 'true');runtimeRequirement=$(if($flavor -eq 'Lite'){'.NET Desktop Runtime 8 x64'}else{'none'});exeBytes=(Get-Item $exePath).Length;uiAssertions=$ui.checks.Count;toolFingerprint=$identity.fingerprint}
+    $flavors += [ordered]@{name=$flavor;selfContained=($selfContained -eq 'true');runtimeRequirement=$(if($flavor -eq 'Lite'){'.NET Desktop Runtime 8 x64'}else{'none'});exeBytes=(Get-Item $exePath).Length;uiAssertions=$ui.checks.Count;connectionAssertions=$connection.checks.Count;toolFingerprint=$identity.fingerprint}
 }
 if($flavors[1].exeBytes -ge $flavors[0].exeBytes){throw 'Lite must be smaller than Portable'}
 @(foreach($file in $assets){"$((Get-FileHash -LiteralPath $file -Algorithm SHA256).Hash.ToLowerInvariant())  $([IO.Path]::GetFileName($file))"}) | Set-Content -LiteralPath (Join-Path $output 'SHA256SUMS.txt') -Encoding ascii

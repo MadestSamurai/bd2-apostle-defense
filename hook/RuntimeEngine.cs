@@ -16,6 +16,7 @@ namespace BD2ApostleDefense.Runtime
  {
   private sealed class UiNotReadyException:Exception {internal UiNotReadyException(string message):base(message){}}
   private static RuntimeEngine current;
+  private readonly SettlementTracker settlement=new SettlementTracker();
   private readonly Harmony patch=new Harmony("bd2.apostle-defense.inputs");
   private Timer timer; private int ioBusy; private bool stopped;
   private readonly int pid=System.Diagnostics.Process.GetCurrentProcess().Id;
@@ -34,7 +35,9 @@ namespace BD2ApostleDefense.Runtime
    try{NetworkGuard.Install();LuckySummon.Install();var pump=typeof(GameCameraManager).GetMethod("LateUpdate",BindingFlags.NonPublic|BindingFlags.Instance);if(pump==null)throw new MissingMethodException("GameCameraManager.LateUpdate");patch.Patch(pump,postfix:new HarmonyMethod(typeof(RuntimeEngine),nameof(Frame)));timer=new Timer(_=>IO(),null,0,100);Loader.Status("active","");}catch{Stop();throw;}
   }
   internal void StartProbe(){B.ValidateCompiledClient();Storage.Write("probe.json",new Snapshot{State="compatible",Message=B.Validate()+" interfaces",At=DateTime.UtcNow.Ticks});}
-  internal void Stop(){stopped=true;LuckySummon.Remove();NetworkGuard.Remove();timer?.Dispose();timer=null;patch.Unpatch(typeof(GameCameraManager).GetMethod("LateUpdate",BindingFlags.NonPublic|BindingFlags.Instance),HarmonyPatchType.All,patch.Id);current=null;}
+  internal void PrepareHandoff(){control=new Control();CancelSelection();}
+  internal string HandoffBusy()=>ioBusy!=0?"snapshot writer":latest.Exiting?"native exit awaiting reply":"";
+  internal void Stop(){CancelSelection();stopped=true;LuckySummon.Remove();NetworkGuard.Remove();timer?.Dispose();timer=null;patch.Unpatch(typeof(GameCameraManager).GetMethod("LateUpdate",BindingFlags.NonPublic|BindingFlags.Instance),HarmonyPatchType.All,patch.Id);current=null;}
   private static void Frame(){current?.Tick();}
   private void IO()
   {
@@ -66,7 +69,7 @@ namespace BD2ApostleDefense.Runtime
    try
    {
     if(now-lastScan>TimeSpan.FromMilliseconds(400).Ticks){surfaces=UnityEngine.Object.FindObjectsOfType<UIBase>().Where(B.Active).ToArray();lastScan=now;}
-    Read(s);NetworkGuard.Apply(s);observed=s;
+    Read(s);settlement.Observe(s);NetworkGuard.Pump(s);NetworkGuard.Apply(s);observed=s;
     if(s.Account!=account){account=s.Account;achievementsKnown=false;achievementRequest=false;clearProgress=rareProgress=0;catalog=null;fault="";}
     // A complete native result must be settled before refreshing the server-backed counters.
     if(s.Stage=="lobby"&&lastStage!="lobby")achievementsKnown=false;
@@ -100,8 +103,8 @@ namespace BD2ApostleDefense.Runtime
   private void Publish(Snapshot s)
   {
    s.AcceptedCommand=pending==null?0:pending.Command;s.Owner=owner;s.Ack=ack;s.AckResult=ackResult;s.AckMessage=ackMessage;latest=s;
-   var key=s.Stage+"|"+s.State+"|"+s.Blocker+"|"+s.Win+"|"+s.Dead+"|"+s.RoomEnded+"|"+s.Exiting+"|"+(pending==null?0:pending.Command)+"|"+ack+"|"+s.NetworkHold;
-   if(key!=flowKey){flowKey=key;flow.Enqueue(new FlowEvidence{At=s.At,ProcessId=pid,Runtime=Identity.Runtime,Stage=s.Stage,State=s.State,Blocker=s.Blocker,Win=s.Win,Dead=s.Dead,RoomEnded=s.RoomEnded,Exiting=s.Exiting,Wave=s.Wave,Command=pending==null?0:pending.Command,Action=pending==null?"":pending.Action.Kind,Ack=ack,AcceptedCommand=s.AcceptedCommand,NetworkHold=s.NetworkHold,AckResult=ackResult,Message=s.Message});FlowEvidence drop;while(flow.Count>256)flow.TryDequeue(out drop);}
+   var key=s.Stage+"|"+s.State+"|"+s.Blocker+"|"+s.Win+"|"+s.Dead+"|"+s.RoomEnded+"|"+s.Exiting+"|"+(pending==null?0:pending.Command)+"|"+ack+"|"+s.NetworkHold+"|"+s.SettlementPending+"|"+s.SettlementRoomEnded;
+   if(key!=flowKey){flowKey=key;flow.Enqueue(new FlowEvidence{At=s.At,ProcessId=pid,Runtime=Identity.Runtime,Stage=s.Stage,State=s.State,Blocker=s.Blocker,Win=s.Win,Dead=s.Dead,RoomEnded=s.RoomEnded,Exiting=s.Exiting,Wave=s.Wave,Command=pending==null?0:pending.Command,Action=pending==null?"":pending.Action.Kind,Ack=ack,AcceptedCommand=s.AcceptedCommand,NetworkHold=s.NetworkHold,SettlementPending=s.SettlementPending,SettlementRoomEnded=s.SettlementRoomEnded,AckResult=ackResult,Message=s.Message});FlowEvidence drop;while(flow.Count>256)flow.TryDequeue(out drop);}
   }
   private void CancelSelection(){if(pending!=null&&(pending.Action.Kind=="sell"||pending.Action.Kind=="move")&&manager!=null){try{B.InvokeOn("Manager.ClearSelection",manager);}catch{}}}
   private void Finish(Control c,string result,string message){CancelSelection();ack=c.Command;ackResult=result;ackMessage=message;evidence=new ActionEvidence{At=DateTime.UtcNow.Ticks,Result=result,Message=message,Command=c,Before=pending==c?before:observed,After=observed};pending=null;actionPhase=0;}
@@ -140,7 +143,7 @@ namespace BD2ApostleDefense.Runtime
    if(hud!=null&&GameFlow.RoundFinished(s)&&(s.Stage=="waiting-round"||s.Stage=="playing"))s.Stage="ended";
    if(s.Exiting&&s.Stage!="lobby")s.Stage="settling";
    var network=B.Read("Services.Network",null);if(network!=null){s.Room=Convert.ToString(B.Read("Network.Room",network));s.RoundRare=N("Network.Rare",network);}
-   NetworkGuard.Pump(s);NetworkGuard.Apply(s);if(GameFlow.NetworkBlocked(s))return;
+   // Connection policy is applied after terminal evidence has been retained in Tick.
    // Native death clears my objects and can switch to another player's view. Settlement must not
    // depend on that board, its camera, upgrade controls, or enemies still being available.
    if(hud==null||field==null||s.Stage!="playing"||GameFlow.RoundFinished(s)||s.Exiting)return;

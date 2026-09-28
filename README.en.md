@@ -12,7 +12,7 @@ A standalone Apostle Defense assistant for the BrownDust II Windows client. Work
 
 ## Download
 
-Current version: **0.3.3**. Both editions have the same features and include Simplified Chinese / English.
+Local fix build: **0.3.5**; the published release remains **0.3.3** until the release workflow completes. Both editions have the same features and include Simplified Chinese / English.
 
 | Edition | Runtime requirement | Recommended for |
 | --- | --- | --- |
@@ -23,7 +23,7 @@ Download one edition: the EXE runs on its own; ZIPs include both READMEs and lic
 
 ## Quick start
 
-**Before upgrading:** pause and close the old assistant, restart the game normally, then connect with the new version.
+**Before upgrading:** pause and close the old assistant. From 0.3.4 or later, keep the game running and connect with the new version. Migration from 0.3.3 or earlier needs one normal game restart.
 
 1. Enter the Apostle Defense lobby, open the assistant, and click **Connect game**.
 2. Choose goals, check your account and server progress, then click **Start**. By default, it pursues wave 50 before top-tier summons.
@@ -31,6 +31,9 @@ Download one edition: the EXE runs on its own; ZIPs include both READMEs and lic
 4. Pause at any time or choose **Stop after this round**. Pausing the assistant does not pause the game timer.
 
 ## Features and settings
+
+- Retains confirmed end-of-round evidence through scene teardown. A remaining result popup can retry Exit even after native flags reset; live-round result menus are not treated as defeat.
+- Connection, status reads and control writes run off the UI thread. Pause immediately revokes local automation; closing cancels pending connection preparation and uses a bounded shutdown.
 
 - **Lucky mode** is off by default. Each activation requires risk confirmation, and restarting the assistant resets it to off.
 - Brief network interruptions preserve the task until the connection and board recover. Normal disconnection after the entire round ends no longer blocks settlement or Exit.
@@ -64,6 +67,7 @@ Settings, language and diagnostics are under `%LOCALAPPDATA%\BD2ApostleDefense`;
 
 | File | Purpose |
 | --- | --- |
+| `connection.log` | Connection stages, timed waits and failures; uses `%TEMP%\BD2ApostleDefense` if the normal log directory is unavailable |
 | `decisions-date.log` | Decisions, readbacks, recovery and stop reasons |
 | `flow-current.jsonl` / `flow-previous.jsonl` | Matching, battle, results and popup transitions |
 | `network-current.jsonl` / `network-previous.jsonl` | Connectivity checks, recovery and waiting reasons |
@@ -91,3 +95,7 @@ Assets are written to `dist/v<version>/`. Packaging checks both runtime configur
 ## License
 
 Project code is [MIT licensed](LICENSE). Dependencies retain their own licenses; see [third-party notices](THIRD_PARTY_NOTICES.md). This project is not affiliated with the game developer or publisher.
+
+## Connection and tool switching
+
+When upgrading from an older release for the first time, close the old tools and restart the game once. These updated tools can then update and switch within the same game process: pending game operations finish before control changes. Settings and records are retained. Live communication uses local named pipes. Modules used by the daily workflow are coordinated separately by its scheduler.

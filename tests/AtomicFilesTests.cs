@@ -22,7 +22,7 @@ internal static class AtomicFilesTests
   check(Directory.GetFiles(root,"*.tmp").Length==0,"serialization failure cleans temporary file");
   var errors=new System.Collections.Concurrent.ConcurrentQueue<Exception>();
   Parallel.For(0,40,i=>{try{if(i%2==0)JsonFiles.Write(path,new Control{Command=10+i});else{var c=JsonFiles.Read<Control>(path);if(c==null)throw new Exception("partial/missing command");}}catch(Exception e){errors.Enqueue(e);}});
-  check(errors.IsEmpty,"concurrent readers and publishers observe whole JSON documents");
+  check(errors.IsEmpty,"concurrent readers and publishers observe whole JSON documents: "+string.Join(" | ",errors.Select(e=>e.ToString())));
   bool ran=false;check(!IoDiagnostics.Attempt(root,"first","blocked.json",()=>throw new UnauthorizedAccessException("synthetic deny")),"failed diagnostic channel is isolated");
   IoDiagnostics.Attempt(root,"second","snapshot.json",()=>ran=true);check(ran,"later snapshot/heartbeat channel still runs after failure");
   string log=Directory.GetFiles(root,"io-errors-*.log").Single();long size=new FileInfo(log).Length;

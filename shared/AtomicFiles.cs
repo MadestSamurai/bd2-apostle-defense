@@ -7,7 +7,14 @@ namespace BD2ApostleDefense
  // Used on background I/O workers, never on Unity's frame thread.
  public static class AtomicFiles
  {
+  private static readonly object[] Writers=CreateLocks();
+  private static object[] CreateLocks(){var value=new object[32];for(int i=0;i<value.Length;i++)value[i]=new object();return value;}
   public static void Write(string path,Action<Stream> serialize)
+  {
+   path=Path.GetFullPath(path);
+   lock(Writers[(StringComparer.OrdinalIgnoreCase.GetHashCode(path)&int.MaxValue)%Writers.Length])Publish(path,serialize);
+  }
+  private static void Publish(string path,Action<Stream> serialize)
   {
    path=Path.GetFullPath(path);string directory=Path.GetDirectoryName(path)??throw new ArgumentException("Missing parent directory",nameof(path));string temp=path+"."+Guid.NewGuid().ToString("N")+".tmp";
    try

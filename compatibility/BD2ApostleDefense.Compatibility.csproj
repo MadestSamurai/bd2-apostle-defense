@@ -1,6 +1,6 @@
 <Project Sdk="Microsoft.NET.Sdk">
-<!-- Component identity includes embedded sources and build metadata; upgrades require a fresh game process. -->
-<PropertyGroup><Version>0.3.3</Version><TargetFramework>net8.0-windows</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
+<!-- Component identity includes embedded sources and build metadata; current components use same-process handoff. -->
+<PropertyGroup><Version>0.3.5</Version><TargetFramework>net8.0-windows</TargetFramework><ImplicitUsings>enable</ImplicitUsings><Nullable>enable</Nullable></PropertyGroup>
 <ItemGroup>
 <PackageReference Include="Mono.Cecil" Version="0.11.6" />
 <PackageReference Include="Microsoft.CodeAnalysis.CSharp" Version="4.14.0" />
@@ -10,4 +10,4 @@
 <EmbeddedResource Include="../shared/*.cs" LogicalName="Hook.%(Filename)%(Extension)" />
 <EmbeddedResource Include="contract.json" Condition="Exists('contract.json')" LogicalName="BD2ApostleDefense.Contract.json" />
 </ItemGroup>
-</Project>
+<ItemGroup><EmbeddedResource Include="../ipc/common/*.cs" LogicalName="Hook.%(Filename)%(Extension)"/><EmbeddedResource Include="../ipc/runtime/*.cs" LogicalName="Hook.%(Filename)%(Extension)"/></ItemGroup></Project>

@@ -283,5 +283,10 @@
   "BD2 使徒防守助手 · 0.3.1": "BD2 Apostle Defense · 0.3.1",
   "BD2 使徒防守助手 · 0.3.2": "BD2 Apostle Defense · 0.3.2",
   "等待组件取消旧操作，恢复后重新决策": "Waiting for the component to cancel the old action before replanning",
-  "旧操作已取消，按当前界面重新决策": "Old action cancelled; replanning from the current screen"
+  "旧操作已取消，按当前界面重新决策": "Old action cancelled; replanning from the current screen",
+  "组件交接尚未完成，请等待当前操作结算后重新连接，游戏可以保持运行。": "Component handoff is pending. Wait for the current action to finish, then reconnect. You can keep the game running.",
+  " 秒；可打开诊断目录查看 connection.log。": " seconds. Open the diagnostics folder to view connection.log.",
+  "连接仍在进行，已等待 ": "Connection is still in progress; waiting ",
+  "正在连接使徒防守组件…": "Connecting to the Apostle Defense component…",
+  "组件控制权已转移，请重新连接": "Component control has moved to another tool. Please reconnect."
 }

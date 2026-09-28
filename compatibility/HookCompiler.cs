@@ -24,12 +24,13 @@ public static class HookCompiler
         var assembly=typeof(HookCompiler).Assembly;
         var sources=assembly.GetManifestResourceNames().Where(n=>n.StartsWith("Hook.",StringComparison.Ordinal)).OrderBy(n=>n,StringComparer.Ordinal).Select(n=>CSharpSyntaxTree.ParseText(Encoding.UTF8.GetString(Resource(n)),path:n)).ToList();
         sources.Add(CSharpSyntaxTree.ParseText(GenerateSource(resolved),path:"ApostleClient.g.cs"));
+        sources.Add(CSharpSyntaxTree.ParseText("namespace BD2.LocalIpc { public static class Build { public const string Fingerprint = " + JsonSerializer.Serialize(ToolFingerprint) + "; } }"));
         var refs=new List<MetadataReference>();
         // Read metadata only. Do not execute or copy game assemblies into the application directory.
         foreach(var file in Directory.EnumerateFiles(managed,"*.dll").OrderBy(x=>x,StringComparer.Ordinal))
         {try{refs.Add(MetadataReference.CreateFromFile(file));}catch(BadImageFormatException){}}
         refs.Add(MetadataReference.CreateFromImage(Resource("BD2ApostleDefense.Harmony.dll")));
-        var compilation=CSharpCompilation.Create("BD2ApostleDefense.Runtime7."+ToolFingerprint.Substring(0,16),sources,refs,new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,optimizationLevel:OptimizationLevel.Release,platform:Platform.X64,deterministic:true));
+        var compilation=CSharpCompilation.Create("BD2ApostleDefense.Runtime8."+ToolFingerprint.Substring(0,16),sources,refs,new CSharpCompilationOptions(OutputKind.DynamicallyLinkedLibrary,optimizationLevel:OptimizationLevel.Release,platform:Platform.X64,deterministic:true));
         using var stream=new MemoryStream();
         var emit=compilation.Emit(stream,manifestResources:new[]{new ResourceDescription("BD2ApostleDefense.Harmony.dll",()=>new MemoryStream(Resource("BD2ApostleDefense.Harmony.dll")),true)});
         if(!emit.Success)throw new InvalidOperationException("当前客户端接口无法编译，尚未注入。\n"+string.Join("\n",emit.Diagnostics.Where(d=>d.Severity==DiagnosticSeverity.Error).Take(30)));

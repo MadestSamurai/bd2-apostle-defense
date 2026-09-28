@@ -2,10 +2,10 @@ namespace BD2ApostleDefense
 {
  public static class GameFlow
  {
-  public static bool RoundFinished(Snapshot s){return s.Win||s.Dead||s.RoomEnded;}
+  public static bool RoundFinished(Snapshot s){return s.Win||s.Dead||s.RoomEnded||s.SettlementPending;}
   public static bool BoardAction(string kind){return kind=="summon"||kind=="sell"||kind=="move"||kind=="upgrade";}
   // GameEnd deliberately closes the battle TCP. Only unfinished rooms need its recovery.
-  public static bool NeedsBattleConnection(Snapshot s){return !s.RoomEnded&&s.Room.Length>0&&
+  public static bool NeedsBattleConnection(Snapshot s){return !s.RoomEnded&&!s.SettlementRoomEnded&&s.Room.Length>0&&
    (s.Stage=="playing"||s.Stage=="waiting-round"||s.Stage=="ended"||s.Stage=="result"||s.Stage=="confirm-exit"||s.Stage=="settling");}
   public static bool NetworkBlocked(Snapshot s){return s.NetworkHold&&NeedsBattleConnection(s);}
   public static bool SettlementAction(string kind){return kind=="open-result"||kind=="settle"||kind=="confirm-exit";}
@@ -24,7 +24,7 @@ namespace BD2ApostleDefense
    // A popup can prevent the NEXT click; it cannot undo a completed scene transition.
    if(before.Account!=after.Account)return false;
    bool lobby=after.Stage=="lobby"&&!after.Exiting;
-   bool sameRoom=before.Room==after.Room;
+   bool sameRoom=before.Room==after.Room||(after.Room.Length==0&&after.SettlementPending);
    switch(kind)
    {
     case "start":return after.Stage=="matching"||after.Stage=="match-failed"||after.Stage=="waiting-round"||after.Stage=="playing";

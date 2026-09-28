@@ -1,7 +1,7 @@
 namespace BD2ApostleDefense;
 public sealed class Controller
 {
- private readonly object sync=new();private readonly IClientPort port;private readonly Planner planner=new();private Control? active;private Settings settings=new();private long command,nextAction,watchAt,lastPoll;
+ private readonly object sync=new(),sendSync=new();private long revision,stopVersion;private readonly IClientPort port;private readonly Planner planner=new();private Control? active;private Settings settings=new();private long command,nextAction,watchAt,lastPoll;
  private bool refillPending;private string refillRoom="";
  private readonly RecoveryBackoff recovery=new();
  public bool Running {get{lock(sync)return active!=null;}}
@@ -10,30 +10,54 @@ public sealed class Controller
  public string Focus=>planner.Focus;
  public event Action<string>? Diagnostic;
  public Controller(IClientPort port){this.port=port;}
- public void Start(Snapshot s,Settings p,long now){lock(sync)StartLocked(s,p,now);}
- private void StartLocked(Snapshot s,Settings p,long now)
+ public long StopVersion {get{lock(sync)return stopVersion;}}
+ public void Start(Snapshot s,Settings p,long now,long? expectedStopVersion=null)
  {
-  var game=port.Find();if(game==null||!Guards.Fresh(s,game.Id,game.Start,now)||s.Account.Length!=64)throw new InvalidOperationException("请先连接游戏并等待账号和盘面同步");
-  if(p.Validate()!="")throw new ArgumentException(p.Validate());
-  planner.ResetTactics();recovery.Reset();settings=JsonFiles.Clone(p);active=new(){Enabled=true,LuckyMode=p.LuckyMode,Owner=Guid.NewGuid().ToString("N"),Account=s.Account,ProcessId=game.Id,ProcessStart=game.Start,Expires=now+TimeSpan.FromSeconds(10).Ticks};command=0;nextAction=0;watchAt=lastPoll=now;refillPending=false;refillRoom="";port.Write(active);Message="已开启，准备读取游戏状态";
+  var game=port.Find();lock(sync){if(expectedStopVersion.HasValue&&expectedStopVersion!=stopVersion)throw new OperationCanceledException();StartLocked(s,p,now,game);revision++;}
+  try{Publish();}catch{RequestStop();throw;}
  }
- public void SetLuckyMode(bool enabled){lock(sync){settings.LuckyMode=enabled;if(active!=null){active.LuckyMode=enabled;port.Write(active);}}}
- public void Update(Settings p){lock(sync){if(p.Validate()!="")throw new ArgumentException(p.Validate());settings=JsonFiles.Clone(p);}}
- public void Stop(string reason="已暂停；游戏仍会继续运行") {lock(sync){active=null;refillPending=false;port.Write(new Control());Message=reason;Diagnostic?.Invoke(reason);}}
- public void Poll(Snapshot? s,long now){lock(sync)PollLocked(s,now);}
- private void PollLocked(Snapshot? s,long now)
+ private void StartLocked(Snapshot s,Settings p,long now,GameProcess? game)
  {
-  if(active==null)return;var game=port.Find();
-  if(game==null||game.Id!=active.ProcessId||game.Start!=active.ProcessStart){Stop("游戏进程已退出或更换，请重新连接");return;}
+  if(game==null||!Guards.Fresh(s,game.Id,game.Start,now)||s.Account.Length!=64)throw new InvalidOperationException("请先连接游戏并等待账号和盘面同步");
+  if(p.Validate()!="")throw new ArgumentException(p.Validate());
+  planner.ResetTactics();recovery.Reset();settings=JsonFiles.Clone(p);active=new(){Enabled=true,LuckyMode=p.LuckyMode,Owner=Guid.NewGuid().ToString("N"),Account=s.Account,ProcessId=game.Id,ProcessStart=game.Start,Expires=now+TimeSpan.FromSeconds(10).Ticks};command=0;nextAction=0;watchAt=lastPoll=now;refillPending=false;refillRoom="";Message="已开启，准备读取游戏状态";
+ }
+ public void SetLuckyMode(bool enabled){bool publish;lock(sync){settings.LuckyMode=enabled;publish=active!=null;if(active!=null){active.LuckyMode=enabled;revision++;}}if(publish)Publish();}
+ public void Update(Settings p){lock(sync){if(p.Validate()!="")throw new ArgumentException(p.Validate());settings=JsonFiles.Clone(p);}}
+ // The state lock never spans IPC. Stopping stays immediate even during a blocked write.
+ public void RequestStop(string reason="已暂停；游戏仍会继续运行"){lock(sync)StopLocked(reason);}
+ private void StopLocked(string reason){active=null;refillPending=false;stopVersion++;revision++;Message=reason;Diagnostic?.Invoke(reason);}
+ public void Stop(string reason="已暂停；游戏仍会继续运行"){RequestStop(reason);Publish();}
+ public void Flush()=>Publish();
+ private void Publish()
+ {
+  lock(sendSync)while(true)
+  {
+   Control value;long sent;lock(sync){sent=revision;value=active==null?new Control():JsonFiles.Clone(active);}
+   try{port.Write(value);}catch(BD2.LocalIpc.LeaseRevokedException){RequestStop("组件控制权已转移，请重新连接");throw;}
+   lock(sync)if(sent==revision)return;
+   // A concurrent stop/update must be the last command, never the older enabled renewal.
+  }
+ }
+ public void Poll(Snapshot? s,long now)
+ {
+  if(!Running)return;var game=port.Find();
+  lock(sync){if(active==null)return;PollLocked(s,now,game);revision++;}
+  Publish();
+ }
+ private void PollLocked(Snapshot? s,long now,GameProcess? game)
+ {
+  if(active==null)return;
+  if(game==null||game.Id!=active.ProcessId||game.Start!=active.ProcessStart){StopLocked("游戏进程已退出或更换，请重新连接");return;}
   // Keep the GUI enabled through transient loading / file contention. Do not renew a stale action.
   if(s==null||!Guards.Fresh(s,game.Id,game.Start,now)){Message="等待组件心跳；暂停发出操作，恢复后继续";return;}
-  if(s.Account.Length==64&&s.Account!=active.Account){Stop("账号已切换，请核对目标后重新开启");return;}
+  if(s.Account.Length==64&&s.Account!=active.Account){StopLocked("账号已切换，请核对目标后重新开启");return;}
   if(s.Account.Length==0){Message="等待账号加载";return;}
   long elapsed=Math.Max(0,now-lastPoll);lastPoll=now;
   active.LuckyMode=settings.LuckyMode;
   active.Expires=now+TimeSpan.FromSeconds(10).Ticks;
   recovery.Sync(s);
-  if(s.Owner==active.Owner&&s.State=="error"){Stop("组件已暂停："+s.Message);return;}
+  if(s.Owner==active.Owner&&s.State=="error"){StopLocked("组件已暂停："+s.Message);return;}
   if(active.Command>0)
   {
    if(s.Owner!=active.Owner||s.Ack<active.Command)
@@ -48,10 +72,10 @@ public sealed class Controller
      Diagnostic?.Invoke($"#{active.Command} cancel-request stage={s.Stage} accepted={s.AcceptedCommand} ack={s.Ack} ageMs={(now-active.SnapshotAt)/TimeSpan.TicksPerMillisecond}");
     }
     Message=active.CancelThrough>=active.Command?"等待组件取消旧操作，恢复后重新决策":GameFlow.NetworkBlocked(s)?s.NetworkMessage:"等待操作确认："+active.Action.Reason;
-    port.Write(active);return;
+    return;
    }
    Diagnostic?.Invoke($"#{active.Command} {s.AckResult} {s.AckMessage}");
-   if(s.AckResult=="error"){Stop(s.AckMessage);return;}
+   if(s.AckResult=="error"){StopLocked(s.AckMessage);return;}
    if(s.AckResult is "timeout" or "retry")
    {recovery.Record(active.Action,false,now);Diagnostic?.Invoke("单次操作未完成，保留自动化并按当前界面恢复："+s.AckMessage);}
    else if(s.AckResult=="ok")recovery.Record(active.Action,true,now);
@@ -60,17 +84,17 @@ public sealed class Controller
    if(s.AckResult=="ok")planner.Confirm(active.Action,s,now);
    active.Command=0;active.Action=new();nextAction=now+TimeSpan.FromMilliseconds(settings.IntervalMs).Ticks;
   }
-  if(GameFlow.NetworkBlocked(s)){port.Write(active);Message=s.NetworkMessage;return;}
-  if(now<nextAction){port.Write(active);return;}
+  if(GameFlow.NetworkBlocked(s)){Message=s.NetworkMessage;return;}
+  if(now<nextAction){return;}
   var action=Plan(s,now);Message=action.Reason;
-  if(!recovery.Ready(action,now)){Message="等待短暂冷却后重新决策："+action.Reason;port.Write(active);return;}
-  if(action.Kind=="complete"){Stop(action.Reason);return;}
+  if(!recovery.Ready(action,now)){Message="等待短暂冷却后重新决策："+action.Reason;return;}
+  if(action.Kind=="complete"){StopLocked(action.Reason);return;}
   if(action.Kind!="wait")
   {
    active.Command=++command;active.Action=action;active.Room=s.Room;active.BoardKey=s.BoardKey;active.SnapshotAt=s.At;watchAt=now;
    Diagnostic?.Invoke($"#{command} {action.Kind} W{s.Wave} gold={s.Gold} enemy={s.EnemyCount}: {action.Reason}");
   }
-  port.Write(active);
+
  }
  private Decision Plan(Snapshot s,long now)
  {

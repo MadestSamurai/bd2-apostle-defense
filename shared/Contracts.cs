@@ -8,7 +8,8 @@ namespace BD2ApostleDefense
 {
  public static class Identity
  {
-  public const string Version="0.3.3",Runtime="BD2ApostleDefense.Runtime7";
+        public const string LiveEntries="runtime.json|control.json|snapshot.json";
+  public const string Version="0.3.5",Runtime="BD2ApostleDefense.Runtime8";
   public static string Root {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"BD2ApostleDefense");}}
   public static string Hash(string value){using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(value))).Replace("-","").ToLowerInvariant();}
  }
@@ -36,7 +37,7 @@ namespace BD2ApostleDefense
   [DataMember] public long At,ProcessStart,Sequence,Ack,AcceptedCommand;
   [DataMember] public int ProcessId,Wave,Gold,EnemyCount,RoundRare,ClearProgress,RareProgress,ClearTarget=1,RareTarget=3;
   [DataMember] public bool Ready,AchievementsKnown,CanSummon,Win,Dead,MyView,RoomEnded,CanStartMatch,Exiting,EventPopupOpen,CanDismissEvent;
-  [DataMember] public bool NetworkHold;
+  [DataMember] public bool NetworkHold,SettlementPending,SettlementRoomEnded;
   [DataMember] public string NetworkState="inactive",NetworkMessage="";
   [DataMember] public long NetworkLastPacketAt;
   [DataMember] public int NetworkProbeFailures,NetworkAvoidedDisconnects,NetworkNativeDisconnects;
@@ -82,7 +83,7 @@ namespace BD2ApostleDefense
   [DataMember] public long At,Command,Ack,AcceptedCommand;
   [DataMember] public int ProcessId,Wave;
   [DataMember] public string Runtime="",Stage="",State="",Blocker="",Action="",AckResult="",Message="";
-  [DataMember] public bool Win,Dead,RoomEnded,Exiting,NetworkHold;
+  [DataMember] public bool Win,Dead,RoomEnded,Exiting,NetworkHold,SettlementPending,SettlementRoomEnded;
  }
  [DataContract] public class NetworkEvidence
  {

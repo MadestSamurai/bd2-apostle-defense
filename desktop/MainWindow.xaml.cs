@@ -12,15 +12,23 @@ namespace BD2ApostleDefense.Desktop;
 public partial class MainWindow:Window
 {
  private readonly WindowLanguage language;
+ private bool connecting,closing,starting;private int connectionEpoch;
+ private readonly CancellationTokenSource lifetime=new();
+ private Task controlQueue=Task.CompletedTask,shutdownTask=Task.CompletedTask,refreshWork=Task.CompletedTask;
+ private Task QueueControl(Action action)
+ {
+  var previous=controlQueue;
+  return controlQueue=Task.Run(async()=>{try{await previous.ConfigureAwait(false);}catch{}action();});
+ }
  private readonly IClientPort port;private readonly Controller controller;private readonly string root;private readonly bool smoke;
  private readonly DispatcherTimer timer=new(){Interval=TimeSpan.FromMilliseconds(150)};
  private readonly ObservableCollection<string> logs=new();private readonly object logLock=new();private Snapshot? snapshot;private bool busy,initialized;private string lastRefreshError="";private long lastRefreshErrorAt;
- public MainWindow(IClientPort port,string root,bool smoke=false)
+ public MainWindow(IClientPort port,string root,bool smoke=false,bool connectionSmoke=false)
  {
   this.port=port;this.root=root;this.smoke=smoke;controller=new(port);InitializeComponent();BD2.Distribution.DistributionNotice.Attach(this,LanguageChoice);language=new WindowLanguage(this,LanguagePreference.Read(root));Ui.Catalog=language.Catalog;LanguageChoice.SelectedIndex=language.Catalog.Language=="zh-CN"?0:1;LogList.ItemsSource=logs;
   var p=JsonFiles.Read<Settings>(System.IO.Path.Combine(root,"settings.json"))??new();ClearGoal.IsChecked=p.Clear50;RareGoal.IsChecked=p.Rare;AutoNext.IsChecked=p.AutoNext;StopRound.IsChecked=p.StopAfterRound;Interval.Text=p.IntervalMs.ToString();
-  controller.Diagnostic+=Log;initialized=true;timer.Tick+=async(_,_)=>await Refresh();Loaded+=async(_,_)=>{await Refresh();timer.Start();if(smoke)await Smoke();};
-  Closing+=(_,_)=>{language.Dispose();timer.Stop();try{controller.Stop();}catch{}};
+  controller.Diagnostic+=Log;initialized=true;timer.Tick+=async(_,_)=>await Refresh();Loaded+=async(_,_)=>{if(connectionSmoke)return;await Refresh();timer.Start();if(smoke)await Smoke();};
+  Closing+=OnClosing;
  }
  private void LanguageChanged(object sender,SelectionChangedEventArgs e)
  {
@@ -40,37 +48,79 @@ public partial class MainWindow:Window
   var p=new Settings{Clear50=ClearGoal.IsChecked==true,Rare=RareGoal.IsChecked==true,AutoNext=AutoNext.IsChecked==true,StopAfterRound=StopRound.IsChecked==true,LuckyMode=Lucky.IsChecked==true,IntervalMs=ms};
   if(p.Validate()!="")throw new ArgumentException(p.Validate());return p;
  }
- private void SettingsChanged(object? sender,RoutedEventArgs e)
+ private async void SettingsChanged(object? sender,RoutedEventArgs e)
  {
-  if(!initialized)return;try{var p=ReadSettings();controller.Update(p);p.LuckyMode=false;JsonFiles.Write(System.IO.Path.Combine(root,"settings.json"),p);SettingsError.Text="";}catch(Exception ex){SettingsError.Text=ex.Message;}
+  if(!initialized||closing)return;try{var p=ReadSettings();controller.Update(p);p.LuckyMode=false;await QueueControl(()=>JsonFiles.Write(System.IO.Path.Combine(root,"settings.json"),p));if(!closing)SettingsError.Text="";}catch(Exception ex){if(!closing)SettingsError.Text=ex.Message;}
  }
  private Func<bool>? luckyConfirmation;
- private void LuckyChanged(object sender,RoutedEventArgs e)
+ private async void LuckyChanged(object sender,RoutedEventArgs e)
  {
-  if(!initialized)return;
+  if(!initialized||closing)return;
   if(Lucky.IsChecked==true&&!(luckyConfirmation?.Invoke()??new LuckyConfirmation{Owner=this}.ShowDialog()==true))
   {Lucky.IsChecked=false;return;}
-  try{controller.SetLuckyMode(Lucky.IsChecked==true);SettingsChanged(sender,e);}
+  try{var value=Lucky.IsChecked==true;await QueueControl(()=>{if(!closing)controller.SetLuckyMode(value);});SettingsChanged(sender,e);}
   catch(Exception ex){SettingsError.Text=ex.Message;}
  }
- private async void Connect(object sender,RoutedEventArgs e)
+ private async void Connect(object sender,RoutedEventArgs e)=>await ConnectAsync();
+ private async Task ConnectAsync()
  {
-  ConnectButton.IsEnabled=false;try{await port.ConnectAsync(t=>Dispatcher.Invoke(()=>StatusText.Text=t),CancellationToken.None);Log("连接已请求，等待组件首次心跳");await Refresh();}catch(Exception ex){StatusText.Text=ex.Message;string key=ex.GetType().Name+"|"+ex.Message;long now=DateTime.UtcNow.Ticks;IoDiagnostics.Record(root,"desktop-refresh",System.IO.Path.Combine(root,"control.json"),ex);if(key!=lastRefreshError||now-lastRefreshErrorAt>TimeSpan.FromSeconds(15).Ticks){lastRefreshError=key;lastRefreshErrorAt=now;Log(ex.ToString());}}finally{ConnectButton.IsEnabled=true;}
- }
- private async void Start(object sender,RoutedEventArgs e)
- {try{if(snapshot==null)throw new InvalidOperationException("尚未读取游戏状态");controller.Start(snapshot,ReadSettings(),DateTime.UtcNow.Ticks);SettingsChanged(null,e);await Refresh();}catch(Exception ex){SettingsError.Text=ex.Message;}}
- private void Pause(object sender,RoutedEventArgs e){try{controller.Stop();DecisionText.Text=controller.Message;PauseButton.IsEnabled=false;StartButton.IsEnabled=true;}catch(Exception ex){Log(ex.Message);}}
- private async Task Refresh()
- {
-  if(busy)return;busy=true;
+  if(connecting||closing)return;connecting=true;connectionEpoch++;ConnectButton.IsEnabled=false;StartButton.IsEnabled=false;
+  ConnectionDiagnostics.Write(root,"ui.connect.clicked");var running=controller.Running;controller.RequestStop();
   try
   {
-   var s=await Task.Run(()=>{var state=port.Read();controller.Poll(state,DateTime.UtcNow.Ticks);return state;});snapshot=s;
-   var game=port.Find();bool fresh=s!=null&&game!=null&&Guards.Fresh(s,game.Id,game.Start,DateTime.UtcNow.Ticks);
-   StartButton.IsEnabled=fresh&&s!.Account.Length==64&&!controller.Running;PauseButton.IsEnabled=controller.Running;
+   await refreshWork;
+   if(running)await QueueControl(controller.Flush);
+   await port.ConnectAsync(t=>Dispatcher.BeginInvoke(()=>{if(!closing&&connecting)StatusText.Text=t;}),lifetime.Token);
+   if(!closing)Log("连接已请求，等待组件首次心跳");
+  }
+  catch(OperationCanceledException){ConnectionDiagnostics.Write(root,"connect.cancelled");}
+  catch(Exception ex){ConnectionDiagnostics.Write(root,"connect.failed",error:ex);if(!closing){StatusText.Text=ex.Message;Log(ex.ToString());}}
+  finally{connecting=false;if(!closing){ConnectButton.IsEnabled=true;await Refresh();}}
+ }
+ private async void Start(object sender,RoutedEventArgs e)
+ {
+  if(starting||connecting||closing)return;starting=true;StartButton.IsEnabled=false;var stopped=controller.StopVersion;
+  try
+  {
+   if(snapshot==null)throw new InvalidOperationException("尚未读取游戏状态");var s=snapshot;var p=ReadSettings();
+   await QueueControl(()=>{if(closing)throw new OperationCanceledException();controller.Start(s,p,DateTime.UtcNow.Ticks,stopped);});
+   if(!closing){SettingsChanged(null,e);await Refresh();}
+  }
+  catch(OperationCanceledException){}
+  catch(Exception ex){if(!closing)SettingsError.Text=ex.Message;ConnectionDiagnostics.Write(root,"start.failed",error:ex);}
+  finally{starting=false;}
+ }
+ private async void Pause(object sender,RoutedEventArgs e)=>await PauseAsync();
+ private async Task PauseAsync()
+ {
+  controller.RequestStop();DecisionText.Text=controller.Message;PauseButton.IsEnabled=false;StartButton.IsEnabled=!connecting&&!closing;
+  try{await QueueControl(controller.Flush);}catch(Exception ex){ConnectionDiagnostics.Write(root,"stop.failed",error:ex);if(!closing)Log(ex.Message);}
+ }
+ private void OnClosing(object? sender,System.ComponentModel.CancelEventArgs e)
+ {
+  if(closing)return;e.Cancel=true;closing=true;connectionEpoch++;lifetime.Cancel();timer.Stop();controller.RequestStop();
+  ConnectionDiagnostics.Write(root,"ui.closing");shutdownTask=FinishCloseAsync();
+ }
+ private async Task FinishCloseAsync()
+ {
+  var stopped=QueueControl(()=>{try{controller.Flush();}catch(Exception ex){ConnectionDiagnostics.Write(root,"close.stop",error:ex);}});
+  if(await Task.WhenAny(stopped,Task.Delay(2000))!=stopped)ConnectionDiagnostics.Write(root,"ui.close.lease-expiry-fallback");
+  language.Dispose();Close();
+ }
+ private async Task Refresh()
+ {
+  if(busy||connecting||closing)return;busy=true;var epoch=connectionEpoch;
+  try
+  {
+   var work=Task.Run(()=>{var state=port.Read();controller.Poll(state,DateTime.UtcNow.Ticks);var game=port.Find();
+    var status=state==null||game==null||!Guards.Fresh(state,game.Id,game.Start,DateTime.UtcNow.Ticks)?JsonFiles.Read<RuntimeStatus>(System.IO.Path.Combine(root,"runtime.json")):null;
+    return (state,game,status);});refreshWork=work;var read=await work;
+   if(closing||connecting||epoch!=connectionEpoch)return;
+   var s=read.state;snapshot=s;var game=read.game;bool fresh=s!=null&&game!=null&&Guards.Fresh(s,game.Id,game.Start,DateTime.UtcNow.Ticks);
+   StartButton.IsEnabled=fresh&&s!.Account.Length==64&&!controller.Running&&!starting;PauseButton.IsEnabled=controller.Running;
    if(!fresh)
    {
-    StatusText.Text=game==null?"等待游戏启动":"等待组件心跳";var status=JsonFiles.Read<RuntimeStatus>(System.IO.Path.Combine(root,"runtime.json"));
+    StatusText.Text=game==null?"等待游戏启动":"等待组件心跳";var status=read.status;
     if(status?.State=="error"&&game!=null&&status.ProcessId==game.Id&&status.ProcessStart==game.Start)StatusText.Text=status.Error;
     DecisionText.Text=controller.Running?controller.Message:"连接游戏后进入使徒运气防守大厅";BoardView.SetFresh(false);return;
    }
@@ -84,7 +134,7 @@ public partial class MainWindow:Window
    FocusText.Text=controller.Running?controller.Focus:"当前决策";DecisionText.Text=controller.Running?controller.Message:s.State=="error"?s.Message:"已暂停；可调整目标后开启。";
    BoardView.Update(s,controller.PendingDecision);
   }
-  catch(Exception ex){StatusText.Text=ex.Message;string key=ex.GetType().Name+"|"+ex.Message;long now=DateTime.UtcNow.Ticks;IoDiagnostics.Record(root,"desktop-refresh",System.IO.Path.Combine(root,"control.json"),ex);if(key!=lastRefreshError||now-lastRefreshErrorAt>TimeSpan.FromSeconds(15).Ticks){lastRefreshError=key;lastRefreshErrorAt=now;Log(ex.ToString());}}
+  catch(Exception ex){if(closing||connecting||epoch!=connectionEpoch)return;StatusText.Text=ex.Message;string key=ex.GetType().Name+"|"+ex.Message;long now=DateTime.UtcNow.Ticks;IoDiagnostics.Record(root,"desktop-refresh",System.IO.Path.Combine(root,"control.json"),ex);if(key!=lastRefreshError||now-lastRefreshErrorAt>TimeSpan.FromSeconds(15).Ticks){lastRefreshError=key;lastRefreshErrorAt=now;Log(ex.ToString());}}
   finally{busy=false;}
  }
  private void Log(string text)
@@ -141,6 +191,7 @@ public partial class MainWindow:Window
    if(Lucky.IsChecked==true)throw new InvalidOperationException("Lucky mode must start off");
    luckyConfirmation=()=>false;Lucky.IsChecked=true;if(Lucky.IsChecked==true||ReadSettings().LuckyMode)throw new InvalidOperationException("Cancelled lucky confirmation enabled mode");
    luckyConfirmation=()=>true;Lucky.IsChecked=true;if(!ReadSettings().LuckyMode)throw new InvalidOperationException("Accepted lucky confirmation not applied");
+   await controlQueue;await Dispatcher.InvokeAsync(()=>{},DispatcherPriority.ApplicationIdle);await controlQueue;
    if(JsonFiles.Read<Settings>(System.IO.Path.Combine(root,"settings.json"))!.LuckyMode)throw new InvalidOperationException("Lucky consent persisted across launches");
    Lucky.IsChecked=false;luckyConfirmation=()=>false;Lucky.IsChecked=true;if(ReadSettings().LuckyMode)throw new InvalidOperationException("Reenable bypassed confirmation");luckyConfirmation=null;
    foreach(var locale in new[]{"zh-CN","en-US"}){LanguageChoice.SelectedIndex=locale=="zh-CN"?0:1;var dialog=new LuckyConfirmation{Owner=this};dialog.Show();dialog.UpdateLayout();if(dialog.ActualHeight<160)throw new InvalidOperationException("Risk dialog missing");var bmp=new RenderTargetBitmap((int)Math.Ceiling(dialog.ActualWidth),(int)Math.Ceiling(dialog.ActualHeight),96,96,PixelFormats.Pbgra32);bmp.Render(dialog);var png=new PngBitmapEncoder();png.Frames.Add(BitmapFrame.Create(bmp));using(var stream=File.Create(System.IO.Path.Combine(root,"lucky-"+locale+".png")))png.Save(stream);dialog.Close();}

@@ -223,6 +223,7 @@ OpeningEconomyTests.Run(Check,now);
 RecoveryTests.Run(Check,now);
 NetworkRecoveryTests.Run(Check,now);
 SettlementRecoveryTests.Run(Check,now);
+ClearedSettlementTests.Run(Check,now);
 AtomicFilesTests.Run(Check);
 LuckyWeightsTests.Run(Check);
 int localizationChecks=LocalizationTests.Run();

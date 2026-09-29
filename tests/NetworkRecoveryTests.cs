@@ -37,8 +37,6 @@ internal static class NetworkRecoveryTests
   s.Owner=sent.Owner;s.NetworkHold=true;s.At=S(91);controller.Poll(s,s.At);check(port.Last!.Command==sent.Command,"inflight command identity survives network wait");
   s.Ack=sent.Command;s.AckResult="ok";s.NetworkHold=false;s.At=S(95);controller.Poll(s,s.At);check(port.Last!.Command==0&&controller.Running,"recovered receipt reconciles once before next decision");
   s.NetworkHold=true;var c=JsonFiles.Clone(sent);c.SnapshotAt=s.At;c.Expires=s.At+TimeSpan.FromSeconds(10).Ticks;check(Guards.Reject(c,s,s.At)!="","native guard blocks stale spending during recovery");
-  controller.SetLuckyMode(true);check(port.Last!.LuckyMode,"confirmed mode reaches active lease immediately");
-  controller.SetLuckyMode(false);check(!port.Last!.LuckyMode,"disabling mode reaches active lease immediately");
   controller.Stop();s.NetworkHold=false;s.At=S(100);controller.Poll(s,s.At);check(!port.Last!.Enabled&&!controller.Running,"manual stop remains authoritative through recovery");
  }
  private sealed class Port:IClientPort

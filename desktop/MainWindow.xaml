@@ -22,7 +22,6 @@
     <Expander Header="运行设置" IsExpanded="True"><StackPanel Margin="0,14,0,0">
      <CheckBox x:Name="AutoNext" Content="结算后自动开始下一局" IsChecked="True" Checked="SettingsChanged" Unchecked="SettingsChanged" Margin="0,0,0,13"/>
      <CheckBox x:Name="StopRound" Content="本局结算后停止" Checked="SettingsChanged" Unchecked="SettingsChanged" Margin="0,0,0,14"/>
-     <CheckBox x:Name="Lucky" Content="好运模式" Checked="LuckyChanged" Unchecked="LuckyChanged" Margin="0,0,0,14"/>
      <DockPanel><TextBlock Text="操作间隔" VerticalAlignment="Center"/><TextBlock Text="ms" DockPanel.Dock="Right" VerticalAlignment="Center" Margin="6,0,0,0"/><TextBox x:Name="Interval" Text="500" LostFocus="SettingsChanged" Width="78" HorizontalAlignment="Right" AutomationProperties.Name="操作间隔，100至3000毫秒"/></DockPanel>
      <TextBlock Text="100–3000；操作后等待游戏确认。" Style="{StaticResource MetaText}" TextWrapping="Wrap" Margin="0,6,0,0"/>
      <TextBlock x:Name="SettingsError" Foreground="{StaticResource Error}" TextWrapping="Wrap" Margin="0,6,0,0"/>

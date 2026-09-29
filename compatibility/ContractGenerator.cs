@@ -26,8 +26,6 @@ public static class ContractGenerator
   Api("Net.Monitor","NetworkConnectivityMonitor","ὨὯὣὮὬὠὭὧὥὥὬ");
   Api("Net.Timeout","NetworkConnectivityMonitor","connectionTimeout");
   Api("Net.LostCallback","NetworkConnectivityMonitor","OnNetworkLost");
-  Api("Summon.Select","MiniGameDefenseManager","ὩὣὬὭὯὦὢὤὣὦὢ",0);
-  Api("Summon.Total","ὧὡὡὠὦὦὪὮὣὥὢ","ὭὬὡὫὥὮὩὢὧὡὩ");
   Role("PlayerKind","ὠὪὭὥὦὪὩὥὣὧὨ");
   Role("ElementKind","ὥὣὮὨὦὨὬὭὤὨὮ");
   Role("Raw","RawDataManager");

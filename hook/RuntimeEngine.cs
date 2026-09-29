@@ -32,12 +32,12 @@ namespace BD2ApostleDefense.Runtime
   internal void Start()
   {
    if(timer!=null)return; B.ValidateCompiledClient();B.Validate();current=this;
-   try{NetworkGuard.Install();LuckySummon.Install();var pump=typeof(GameCameraManager).GetMethod("LateUpdate",BindingFlags.NonPublic|BindingFlags.Instance);if(pump==null)throw new MissingMethodException("GameCameraManager.LateUpdate");patch.Patch(pump,postfix:new HarmonyMethod(typeof(RuntimeEngine),nameof(Frame)));timer=new Timer(_=>IO(),null,0,100);Loader.Status("active","");}catch{Stop();throw;}
+   try{NetworkGuard.Install();var pump=typeof(GameCameraManager).GetMethod("LateUpdate",BindingFlags.NonPublic|BindingFlags.Instance);if(pump==null)throw new MissingMethodException("GameCameraManager.LateUpdate");patch.Patch(pump,postfix:new HarmonyMethod(typeof(RuntimeEngine),nameof(Frame)));timer=new Timer(_=>IO(),null,0,100);Loader.Status("active","");}catch{Stop();throw;}
   }
   internal void StartProbe(){B.ValidateCompiledClient();Storage.Write("probe.json",new Snapshot{State="compatible",Message=B.Validate()+" interfaces",At=DateTime.UtcNow.Ticks});}
   internal void PrepareHandoff(){control=new Control();CancelSelection();}
   internal string HandoffBusy()=>ioBusy!=0?"snapshot writer":latest.Exiting?"native exit awaiting reply":"";
-  internal void Stop(){CancelSelection();stopped=true;LuckySummon.Remove();NetworkGuard.Remove();timer?.Dispose();timer=null;patch.Unpatch(typeof(GameCameraManager).GetMethod("LateUpdate",BindingFlags.NonPublic|BindingFlags.Instance),HarmonyPatchType.All,patch.Id);current=null;}
+  internal void Stop(){CancelSelection();stopped=true;NetworkGuard.Remove();timer?.Dispose();timer=null;patch.Unpatch(typeof(GameCameraManager).GetMethod("LateUpdate",BindingFlags.NonPublic|BindingFlags.Instance),HarmonyPatchType.All,patch.Id);current=null;}
   private static void Frame(){current?.Tick();}
   private void IO()
   {
@@ -203,7 +203,7 @@ namespace BD2ApostleDefense.Runtime
     case "open-result":if(s.Stage!="ended"||!GameFlow.CanSettle(s))throw new InvalidOperationException("对局尚未结束");Click(hud,"_goExitButton");break;
     case "settle":if(s.Stage!="result"||!GameFlow.CanSettle(s))throw new InvalidOperationException("请先完成当前对局");Click(Surface<DefenseResultPopupUI>(),"_goExitButton");break;
     case "confirm-exit":if(s.Stage!="confirm-exit"||!GameFlow.CanSettle(s))throw new InvalidOperationException("不自动放弃进行中的对局");Click(Surface<DefenseGiveUpConfirmPopupUI>(),"_goOkButton");break;
-    case "summon":LuckySummon.Run(pending.LuckyMode,()=>Click(hud,"_goRecallButton"));break;
+    case "summon":Click(hud,"_goRecallButton");break;
     case "upgrade":
      var button=Items(B.Get(hud,"_elementButtons")).Single(b=>(int)B.Num(b,"_elementType")==a.Element);
      if(!B.Active(B.Get(button,"_goUpgradeEnable") as GameObject))throw new InvalidOperationException("升级按钮不可用");hud.OnClickUI((GameObject)B.Get(button,"_goUpgradeButton"));break;

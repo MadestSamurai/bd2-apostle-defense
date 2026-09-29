@@ -31,7 +31,6 @@ NetworkGuard.Flush();Check(Storage.Events.Any(e=>e.Kind=="probe-restored-kept-se
 monitor.OnNetworkLost=chat.OnNetworkLost;NetworkGuard.Pump(s);Check(monitor.connectionTimeout==1500,"shared monitor timeout restored outside owned defense callback");
 monitor.OnNetworkLost=tcp.OnNetworkLost;NetworkGuard.Pump(s);NetworkGuard.Remove();Check(monitor.connectionTimeout==1500,"unload restores probe configuration");
 int lost=tcp.LostCalls;tcp.OnNetworkLost();Check(tcp.LostCalls==lost+1,"unload removes only owned patch");
-LuckyNative.Run(Check);
 Console.WriteLine("TOTAL "+count+" PASS; actual Harmony adapter with isolated transport");
 
 if(args.Length>0){Directory.CreateDirectory(args[0]);JsonFiles.Write(Path.Combine(args[0],"network-native.json"),new{status="passed",checks=count});}

@@ -1,13 +1,12 @@
-# BD2 Apostle Defense v0.3.5
+# BD2 Apostle Defense v0.3.6
 
 ## 简体中文
 
-### 修复
+### 更新内容
 
-- 修复结算退出后游戏清空胜败状态、残留结果弹窗导致无法续局的问题。已确认的结束状态保留到返回大厅或开始新局，超时后按当前界面恢复。
-- 连接和读写改为后台处理，连接期间不轮询，避免连接、暂停、关闭窗口时界面未响应。
-- 暂停立即生效，迟到的启动或续约不能重新开启自动化；关窗最多等待两秒停止通知，通信不可用时由短租约到期停用。
-- 从点击连接开始记录诊断，包含接口检查、组件连接、交接及持续等待阶段。
+- 简化自动化设置与客户端适配，保留 50 波通关、收集使徒、换位和自动续局流程。
+- 包含 0.3.5 的结算恢复与连接响应修复；连接、暂停和关闭窗口在通信等待期间保持可用。
+- 内置简体中文与 English，已有目标、间隔和语言设置继续保留。
 
 ### 下载
 
@@ -22,12 +21,11 @@
 
 ## English
 
-### Fixes
+### Changes
 
-- Retains confirmed round completion when the game clears its win/loss flags before the result popup disappears. Exit can recover after a timeout and continue to the next round.
-- Moves connection and communication off the UI thread, suspends polling during connection, and keeps Pause and Close responsive.
-- Pause immediately revokes local automation; delayed starts and renewals cannot enable it again. Close waits at most two seconds for notification; an unavailable connection falls back to lease expiry.
-- Records connection diagnostics from the first click, including interface checks, injection stages, handoff and ongoing waits.
+- Streamlines automation settings and client adaptation while retaining wave-50 clears, unit collection, repositioning and automatic next rounds.
+- Includes the settlement recovery and responsive connection fixes from 0.3.5. Connect, Pause and Close remain responsive during communication waits.
+- Includes Simplified Chinese and English, retaining existing goals, intervals and language preferences.
 
 ### Downloads
 

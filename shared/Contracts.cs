@@ -9,7 +9,7 @@ namespace BD2ApostleDefense
  public static class Identity
  {
         public const string LiveEntries="runtime.json|control.json|snapshot.json";
-  public const string Version="0.3.5",Runtime="BD2ApostleDefense.Runtime8";
+  public const string Version="0.3.6",Runtime="BD2ApostleDefense.Runtime9";
   public static string Root {get{return Path.Combine(Environment.GetFolderPath(Environment.SpecialFolder.LocalApplicationData),"BD2ApostleDefense");}}
   public static string Hash(string value){using(var sha=SHA256.Create())return BitConverter.ToString(sha.ComputeHash(Encoding.UTF8.GetBytes(value))).Replace("-","").ToLowerInvariant();}
  }
@@ -51,7 +51,6 @@ namespace BD2ApostleDefense
  }
  [DataContract] public class Settings
  {
-  [DataMember] public bool LuckyMode;
   [DataMember] public bool Clear50=true,Rare=true,AutoNext=true,StopAfterRound;
   [DataMember] public int IntervalMs=500;
   public string Validate(){return !Clear50&&!Rare?"请至少选择一个目标":IntervalMs<100||IntervalMs>3000?"操作间隔需要在100–3000ms之间":"";}
@@ -64,7 +63,7 @@ namespace BD2ApostleDefense
  }
  [DataContract] public class Control
  {
-  [DataMember] public bool Enabled,LuckyMode;
+  [DataMember] public bool Enabled;
   [DataMember] public string Owner="",Account="",Room="",BoardKey="";
   [DataMember] public long ProcessStart,Expires,Command,SnapshotAt,CancelThrough;
   [DataMember] public int ProcessId;

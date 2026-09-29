@@ -12,7 +12,7 @@ A standalone Apostle Defense assistant for the BrownDust II Windows client. Work
 
 ## Download
 
-Local fix build: **0.3.5**; the published release remains **0.3.3** until the release workflow completes. Both editions have the same features and include Simplified Chinese / English.
+Current version: **0.3.6**. Both editions have the same features and include Simplified Chinese / English.
 
 | Edition | Runtime requirement | Recommended for |
 | --- | --- | --- |
@@ -35,7 +35,6 @@ Download one edition: the EXE runs on its own; ZIPs include both READMEs and lic
 - Retains confirmed end-of-round evidence through scene teardown. A remaining result popup can retry Exit even after native flags reset; live-round result menus are not treated as defeat.
 - Connection, status reads and control writes run off the UI thread. Pause immediately revokes local automation; closing cancels pending connection preparation and uses a bounded shutdown.
 
-- **Lucky mode** is off by default. Each activation requires risk confirmation, and restarting the assistant resets it to off.
 - Brief network interruptions preserve the task until the connection and board recover. Normal disconnection after the entire round ends no longer blocks settlement or Exit.
 - Missing acceptance or overdue readback first retires the old command with component confirmation, then replans from the current screen. Temporary file contention gets bounded retries; a diagnostic-write failure does not block state updates.
 

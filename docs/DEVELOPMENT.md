@@ -45,7 +45,6 @@ The network adapter is resolved from the installed client through the same compa
 
 The controller retains one pending command during recovery, renews its lease and pauses its readback deadline. After recovery it reconciles the actual receipt before planning again. Network diagnostics rotate at 2 MiB. Leaving the owned monitor or unloading restores its original timeout.
 
-Lucky mode defaults to off and requires a new confirmation every time it is enabled. Consent is session-only, and disabling it updates the active lease immediately, even if another input is invalid. Its native adapter uses a thread-local scope around the tool's normal summon action and restores that scope in a `finally` block. Generated regressions check isolation, rollback, total preservation and unchanged game tables. These checks and offline client compilation do not establish continuous live gameplay reliability.
 
 ## 文档格式 / Documentation format
 

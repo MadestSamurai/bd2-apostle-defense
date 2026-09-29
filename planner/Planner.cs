@@ -159,8 +159,7 @@ public sealed partial class Planner
   double required=cur.Boss?s.Enemies.Sum(e=>e.Hp)/Math.Max(1,s.SecondsLeft):cur.Hp*cur.Count/Math.Max(1,cur.Duration);
   if(cur.Boss&&required==0)required=cur.Hp*cur.Count/Math.Max(1,cur.Duration);
   bool urgent=s.EnemyCount>=s.Catalog.GameOverCount*.6||currentDps<required*1.2;
-  var adjusted=settings.LuckyMode?LuckyWeights.Create(s.Catalog.Units):null;
-  var odds=s.Catalog.Units.Select((d,i)=>new{d.Id,Weight=adjusted==null?d.Weight:adjusted[i]}).ToDictionary(x=>x.Id,x=>x.Weight);
+  var odds=s.Catalog.Units.ToDictionary(d=>d.Id,d=>d.Weight);
   double weight=s.Catalog.Units.Sum(d=>(double)d.Weight);if(weight<=0||s.Catalog.SummonCost<=0)return Act("wait","召唤概率表不可用");
   var emptyBoards=s.Boards.Where(b=>!s.Units.Any(u=>u.Grid==b.Id)).ToArray();
   var empty=emptyBoards.FirstOrDefault();

@@ -55,6 +55,7 @@ jobs:
         run: |
           gh run download $env:GITHUB_RUN_ID --name BD2ApostleDefense-win-x64 --dir dist
           if ($LASTEXITCODE -ne 0) { throw 'Artifact download failed' }
-          $assets = @(Get-ChildItem dist -Recurse -File | ForEach-Object FullName)
+          $assets = @(Get-ChildItem dist -Recurse -File | Where-Object { $_.Extension -in '.exe','.zip' -or $_.Name -eq 'SHA256SUMS.txt' } | ForEach-Object FullName)
+          if ($assets.Count -ne 5) { throw 'Expected two EXEs, two ZIPs and checksums' }
           gh release create $env:GITHUB_REF_NAME @assets --draft --verify-tag --title "BD2 Apostle Defense $env:GITHUB_REF_NAME" --notes-file docs/RELEASE_NOTES.md
           if ($LASTEXITCODE -ne 0) { throw 'Release publication failed' }

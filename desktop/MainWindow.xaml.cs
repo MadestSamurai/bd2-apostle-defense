@@ -11,6 +11,8 @@ using System.Windows.Threading;
 namespace BD2ApostleDefense.Desktop;
 public partial class MainWindow:Window
 {
+ public bool HostedAutomationEnabled => controller.Running || starting || connecting;
+
  private readonly WindowLanguage language;
  private bool connecting,closing,starting;private int connectionEpoch;
  private readonly CancellationTokenSource lifetime=new();
@@ -33,7 +35,7 @@ public partial class MainWindow:Window
  private void LanguageChanged(object sender,SelectionChangedEventArgs e)
  {
   if(language==null||!initialized)return;
-  string selected=LanguageChoice.SelectedIndex==0?"zh-CN":"en-US";
+  string selected=AppDomain.CurrentDomain.GetData("BD2Daily.HostedLanguage") as string ?? (LanguageChoice.SelectedIndex==0?"zh-CN":"en-US");
   try{LanguagePreference.Save(root,selected);language.Select(selected);BoardView.RefreshLanguage();RenderAccount();}
   catch(Exception ex){SettingsError.Text=ex.Message;}
  }

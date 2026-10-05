@@ -284,5 +284,7 @@
   " 秒；可打开诊断目录查看 connection.log。": " seconds. Open the diagnostics folder to view connection.log.",
   "连接仍在进行，已等待 ": "Connection is still in progress; waiting ",
   "正在连接使徒防守组件…": "Connecting to the Apostle Defense component…",
-  "组件控制权已转移，请重新连接": "Component control has moved to another tool. Please reconnect."
+  "组件控制权已转移，请重新连接": "Component control has moved to another tool. Please reconnect.",
+  "GitHub: MadestSamurai · B站: MadSamurai": "GitHub: MadestSamurai · Bilibili: MadSamurai"
 }
+

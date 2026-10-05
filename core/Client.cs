@@ -32,7 +32,7 @@ public sealed class GamePort:IClientPort
         try
         {
         cancellation.ThrowIfCancellationRequested();trace.Stage("process.find");
-        var game=Find()??throw new InvalidOperationException("请先启动并登录游戏。");trace.Stage("process.found");var path=Path.Combine(root,"connection.json");trace.Stage("pipe.probe");var pipe=BD2.LocalIpc.DesktopFiles.Connect(root,game.Id,game.Start);
+        var game=Find()??throw new InvalidOperationException("请先启动并登录游戏。");trace.Stage("process.found");var path=Path.Combine(root,"connection.json");trace.Stage("pipe.probe");var pipe=BD2.LocalIpc.DesktopFiles.Connect(root,game.Id,game.Start);if(BD2.LocalIpc.HostedConnection.TryOpen(pipe,game.Id,game.Start))return;
         try{if(pipe.Fingerprint()==HookCompiler.ToolFingerprint){var status=JsonFiles.Read<RuntimeStatus>(Path.Combine(root,"runtime.json"));if(status?.State=="active"&&status.At>DateTime.UtcNow.AddSeconds(-5).Ticks){cancellation.ThrowIfCancellationRequested();pipe.Open(HookCompiler.ToolFingerprint);trace.Stage("connected.reused","已连接组件，等待游戏状态");return;}}}
         catch(BD2.LocalIpc.LeaseRevokedException){}catch(TimeoutException){}catch(IOException){}
         cancellation.ThrowIfCancellationRequested();trace.Stage("compatibility.prepare","解析本机客户端接口并准备组件…");

@@ -60,6 +60,14 @@ internal static class Clear50StrategyTests
   var support=Sample();support.Wave=11;support.Units=[new(){Id=70,Index=1,Grid=0,Ready=true},new(){Id=1,Index=2,Grid=1,Ready=true}];
   support.Catalog.Units[0].Element=4;support.Catalog.Units[0].UpAttack=100;support.UpgradeCosts=[100,1,1,1,12];support.Gold=12;
   check(new Planner().Decide(support,settings) is {Kind:"upgrade",Element:4},"low-tier dark support is eligible when its marginal gain per gold beats the water core");
+  var crowd=Sample();crowd.Wave=11;crowd.Gold=12;crowd.EnemyCount=66;crowd.UpgradeCosts=[12,1,1,1,132];
+  crowd.CanUpgrade[4]=false;crowd.Units=[new(){Id=84,Index=1,Grid=0,Ready=true},new(){Id=70,Index=2,Grid=1,Ready=true}];
+  crowd.Catalog.Units[1].UpAttack=1;
+  check(new Planner().Decide(crowd,settings) is {Kind:"upgrade",Element:0},"live crowd pressure funds an affordable water improvement instead of waiting for the more efficient dark core upgrade");
+  crowd.EnemyCount=0;check(new Planner().Decide(crowd,settings).Kind=="wait","safe lane retains the higher-efficiency future upgrade reserve");
+  crowd.EnemyCount=66;crowd.Gold=11;check(new Planner().Decide(crowd,settings).Kind=="wait","pressure cannot spend unavailable gold or buy an unrelated cheap element");
+  crowd.Gold=12;crowd.Catalog.Units[1].UpAttack=0;
+  check(new Planner().Decide(crowd,settings).Kind=="wait","pressure never buys a zero-output improvement");
   var recruit=Sample();recruit.Wave=11;recruit.Units=[new(){Id=84,Index=1,Grid=0,Ready=true}];recruit.Levels[4]=3;
   recruit.Catalog.Waves=recruit.Catalog.Waves.Concat(new[]{12,36}.Select(id=>new WaveDef{Id=id,Hp=10000,Count=60,Duration=30,Speed=1,SpawnInterval=.5})).OrderBy(w=>w.Id).ToArray();
   recruit.UpgradeCosts[4]=60;recruit.CanUpgrade[4]=false;recruit.Gold=25;var recruitPlanner=new Planner();

@@ -7,6 +7,7 @@
 - 50波目标采用分阶段决策：前10波优先刷7/8阶核心，保留基础产金阵容。未形成核心且开启自动续局时重开；本局后停止和中途接管晚期对局不自动放弃。
 - 有核心后集中培养暗、水及高阶补位，停止为低阶杂色分散升级。结合后续五波与下一首领预留升级金币，避免一够召唤费用就花掉、迟迟存不到核心升级费用。
 - 低压力时回收低贡献杂色的金币；暗水阵容缺少高阶补位时，每个安全波次最多补抽两次。保留有价值的5/6阶第三属性补位，避免只升级单一核心而缺少后期输出。
+- 积怪严重时优先完成买得起的有效核心升级，避免为后续波次攒金币而错过当前波次的补强。
 - 重开沿用游戏的退出、确认和返回大厅流程，暂停或对局变化后撤销旧指令。
 
 ### 下载
@@ -33,6 +34,7 @@
 - The wave-50 goal uses staged decisions: prioritize a tier-7/8 core during the first ten waves while retaining basic earners. With auto-next enabled, an opening without a core restarts. Stop-after-round and late attachment prevent automatic abandonment.
 - Once a core is present, upgrades focus on dark, water and a high-tier support element. Gold is reserved against the next five waves and the next boss, so repeated affordable summons cannot starve core upgrades.
 - Recycle low-contribution off-colour units under low pressure. When the Water/Dark complement is missing, allow at most two extra rolls per safe wave. Useful tier-5/6 units can fill the third element, avoiding a lone core without late-game support.
+- When enemies accumulate, prioritize an affordable core upgrade with immediate damage gains instead of waiting for a more expensive future upgrade.
 - Restarts use native Exit, confirmation and lobby flow. Pausing or changing rounds revokes old restart commands.
 
 ### Downloads

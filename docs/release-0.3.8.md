@@ -9,6 +9,7 @@
 - 低压力时回收低贡献杂色的金币；暗水阵容缺少高阶补位时，每个安全波次最多补抽两次。保留有价值的5/6阶第三属性补位，避免只升级单一核心而缺少后期输出。
 - 积怪严重时优先完成买得起的有效核心升级，避免为后续波次攒金币而错过当前波次的补强。
 - 第三属性补位会考虑核心被首领克制的情况，保留有明确用途的2阶以上克制角色，避免水核心提前卖掉应对风首领的火系补位。
+- 群怪输出与开局收益评分会结合出怪间距和路径长度估算持续攻击时间，修正短射程单位面对连续怪流时被低估的问题。
 - 重开沿用游戏的退出、确认和返回大厅流程，暂停或对局变化后撤销旧指令。
 
 ### 下载
@@ -37,6 +38,7 @@
 - Recycle low-contribution off-colour units under low pressure. When the Water/Dark complement is missing, allow at most two extra rolls per safe wave. Useful tier-5/6 units can fill the third element, avoiding a lone core without late-game support.
 - When enemies accumulate, prioritize an affordable core upgrade with immediate damage gains instead of waiting for a more expensive future upgrade.
 - The support element also accounts for bosses that resist the core. Useful tier-two or higher counters are retained, so a water core does not sell its fire support before the wind boss.
+- Crowd damage and opening income estimates now account for spawn spacing and route length, avoiding a single-target coverage penalty on short-range units attacking a continuous stream.
 - Restarts use native Exit, confirmation and lobby flow. Pausing or changing rounds revokes old restart commands.
 
 ### Downloads

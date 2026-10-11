@@ -3,6 +3,13 @@ internal static class Clear50StrategyTests
 {
  internal static void Run(Action<bool,string> check,long now)
  {
+  var stream=new WaveDef{Count=100,Speed=4,SpawnInterval=.5};
+  check(Planner.AttackUptime(.1,40,stream)==1,"a four-unit covered segment stays occupied when ordinary enemies are two units apart");
+  stream.SpawnInterval=2;check(Planner.AttackUptime(.1,40,stream)==.5,"sparse ordinary stream scales uptime by residence time and arrival interval");
+  stream.Count=1;check(Planner.AttackUptime(.1,40,stream)==.1,"one ordinary target retains single-target path coverage");
+  stream.Count=100;stream.Boss=true;check(Planner.AttackUptime(.1,40,stream)==.1,"boss pursuit retains its separate single-target timing model");
+  stream.Boss=false;stream.SpawnInterval=.5;check(Planner.AttackUptime(0,40,stream)==0,"stream density never makes an unreachable board reachable");
+  stream.Speed=0;check(Planner.AttackUptime(.1,40,stream)==.1,"missing movement parameters do not invent continuous uptime");
   Snapshot Sample()=>new(){At=now,ProcessId=10,ProcessStart=20,Account=new('a',64),Room="opening",Stage="playing",Ready=true,MyView=true,Wave=1,Gold=100,CanSummon=true,SecondsLeft=30,
    Boards=Enumerable.Range(0,8).Select(i=>new Board{Id=i,X=i*.01}).ToArray(),Path=[new(){X=-1,Z=-1},new(){X=1,Z=-1},new(){X=1,Z=1},new(){X=-1,Z=1}],
    CanUpgrade=Enumerable.Repeat(true,5).ToArray(),UpgradeCosts=[1,1,1,1,1],Units=[new(){Index=1,Id=1,Grid=0,Ready=true}],

@@ -220,6 +220,7 @@ exposed!.Kind="sell";Check(inspectController.PendingDecision?.Kind=="summon"&&in
 inspectController.Stop();Check(inspectController.PendingDecision==null,"paused inspector clears pending command");
 var bossChaseRegression=BossChaseTests.Run(Check,s.Catalog,captured,now);
 OpeningEconomyTests.Run(Check,now);
+Clear50StrategyTests.Run(Check,now);
 RecoveryTests.Run(Check,now);
 NetworkRecoveryTests.Run(Check,now);
 SettlementRecoveryTests.Run(Check,now);

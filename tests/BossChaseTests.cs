@@ -27,6 +27,9 @@ internal static class BossChaseTests
   s=Scene();
   var d=model.Decide(s,settings,now);
   check(d?.Kind=="move"&&d.Policy==BossChase.Policy&&d.TargetEnemy==901,"boss chase selects native move and exact live boss instance");
+  var funded=JsonFiles.Clone(s);funded.Gold=1;funded.CanUpgrade=Enumerable.Repeat(true,5).ToArray();funded.UpgradeCosts=Enumerable.Repeat(1,5).ToArray();
+  check(new BossChase().Decide(funded,settings,now)?.Kind=="move","funded boss scene still proposes a real pursuit move");
+  check(new Planner().Decide(funded,new Settings{Clear50=true,Rare=false},now) is {Kind:"upgrade",Element:4,Policy:"clear50-core"},"affordable planned boss upgrade precedes the competing pursuit move");
   check(d!=null&&Guards.Reject(Command(s,d),s,now)=="","boss chase command passes native guards");
   var p=new Planner();var planned=p.Decide(s,settings,now);check(planned.Policy==BossChase.Policy&&p.Focus.StartsWith("BOSS"),"boss chase connected to production planner");
   var native=Command(s,planned);
